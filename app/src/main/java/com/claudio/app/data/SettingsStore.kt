@@ -16,6 +16,7 @@ class SettingsStore(private val context: Context) {
     private val keyApi = stringPreferencesKey("api_key")
     private val keyBase = stringPreferencesKey("base_url")
     private val keyModel = stringPreferencesKey("model")
+    private val keyWebSearch = booleanPreferencesKey("web_search")
     private val keyAccent = stringPreferencesKey("theme_accent")
     private val keyTone = stringPreferencesKey("theme_tone")
     private val keyBubble = stringPreferencesKey("theme_bubble")
@@ -30,6 +31,7 @@ class SettingsStore(private val context: Context) {
             customKey = customKey,
             baseUrl = prefs[keyBase]?.ifBlank { Settings.DEFAULT_BASE_URL } ?: Settings.DEFAULT_BASE_URL,
             model = prefs[keyModel]?.ifBlank { Settings.DEFAULT_MODEL } ?: Settings.DEFAULT_MODEL,
+            webSearch = prefs[keyWebSearch] ?: false,
             theme = ThemePrefs(
                 accent = AccentTone.from(prefs[keyAccent]),
                 tone = SurfaceTone.from(prefs[keyTone]),
@@ -50,6 +52,10 @@ class SettingsStore(private val context: Context) {
             prefs[keyBase] = baseUrl.trim().trimEnd('/').ifBlank { Settings.DEFAULT_BASE_URL }
             prefs[keyModel] = model.trim().ifBlank { Settings.DEFAULT_MODEL }
         }
+    }
+
+    suspend fun saveWebSearch(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[keyWebSearch] = enabled }
     }
 
     suspend fun saveTheme(theme: ThemePrefs) {

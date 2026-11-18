@@ -102,6 +102,10 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { settingsStore.saveTheme(theme) }
     }
 
+    fun setWebSearch(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.saveWebSearch(enabled) }
+    }
+
     fun fetchModels(apiKey: String, baseUrl: String) {
         if (apiKey.isBlank()) return
         modelsJob?.cancel()

@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -392,6 +393,42 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                         CustomModelField(value = customModel, onChange = { customModel = it })
                     }
 
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Search the web",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                "Use live web results and cite sources. Adds a small search fee per answer.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted
+                            )
+                        }
+                        Switch(
+                            checked = settings.webSearch,
+                            onCheckedChange = { vm.setWebSearch(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = colors.backgroundDeep,
+                                checkedTrackColor = colors.accent,
+                                uncheckedThumbColor = colors.textMuted,
+                                uncheckedTrackColor = colors.surface3,
+                                uncheckedBorderColor = colors.outline
+                            )
+                        )
+                    }
+
                     GradientButton(
                         text = if (showOwnKey) "Save connection" else "Save changes",
                         icon = Icons.Filled.AutoAwesome,
@@ -425,7 +462,7 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
 
                 SectionCard(title = "About", icon = Icons.Filled.AutoAwesome) {
                     Text(
-                        "Claudio v1.4.0 · a warm study companion that reads photos, drawings and notes, then teaches the answer.",
+                        "Claudio v1.5.0 · a warm study companion that reads photos, drawings and notes, then teaches the answer.",
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary
                     )

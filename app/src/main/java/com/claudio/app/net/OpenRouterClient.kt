@@ -54,7 +54,19 @@ object OpenRouterClient {
         "type a question with no photo. If an image is present, first read everything visible in it carefully " +
         "(including handwriting). Then answer the user's request: " +
         "solve problems step by step, explain concepts clearly, summarize, translate, or whatever they ask. " +
-        "Use markdown: short headings, numbered steps, **bold** for key results, and `code` where relevant. " +
+        "Use markdown. For every question, problem, explanation, summary or study request, ALWAYS organize the " +
+        "answer into these three sections, in this order, with these exact headings:\n" +
+        "### Answer\n" +
+        "The final result in 1-3 sentences. Bold the exact answer and include units.\n" +
+        "### Step by step\n" +
+        "Numbered reasoning that shows how you got there; keep each step short.\n" +
+        "### Notebook\n" +
+        "3-6 short bullet points with exactly what the student should write down: formulas, definitions, key " +
+        "values, and one common mistake to avoid.\n" +
+        "For casual conversation or a simple acknowledgement, reply naturally instead. " +
+        "WEB SEARCH: when web results are provided, ground the answer in them, cite each source as a markdown " +
+        "link like [domain.com](https://example.com/page), and finish with a '### Sources' section listing those " +
+        "links. Never invent a source or a URL. " +
         "MATH FORMATTING: never use LaTeX, dollar signs, \\( \\) or \\[ \\]. Write every formula in plain Unicode " +
         "text that reads naturally: θ, π, °, ², ³, √, ≤, ≥, ≠, ≈, ×, ·, fractions like 3/2 or (x+2)/(x-1). " +
         "Put key results on their own line so they stand out. " +
@@ -65,9 +77,9 @@ object OpenRouterClient {
         "(stroke=\"#1b2a4a\" stroke-width=\"2.5\"), accent colors #2456a6, #d64545, #e8a33d; label every part with " +
         "<text> in font-family=\"sans-serif\" font-size=\"14\" fill=\"#1b2a4a\"; make angles, lengths and proportions " +
         "mathematically correct and consistent with the photo or question (e.g. a 30 degree angle must look like 30 degrees). " +
-        "Close the svg tag properly. After the drawing, explain it in one or two sentences. " +
-        "Be encouraging and concise but complete. If part of the image is unreadable, say so honestly and answer what you can. " +
-        "Always end problem solutions with the final answer clearly stated."
+        "Close the svg tag properly. After the drawing, explain it in one or two sentences while keeping the " +
+        "Answer / Step by step / Notebook structure. " +
+        "Be encouraging and concise but complete. If part of the image is unreadable, say so honestly and answer what you can."
 
     private fun supportsReasoning(model: String): Boolean {
         val m = model.lowercase()
@@ -157,6 +169,15 @@ object OpenRouterClient {
             put("stream", true)
             if (supportsReasoning(settings.model)) {
                 putJsonObject("reasoning") { put("enabled", true) }
+            }
+            if (settings.webSearch) {
+                // OpenRouter's model-agnostic web plugin (Exa by default).
+                putJsonArray("plugins") {
+                    add(buildJsonObject {
+                        put("id", "web")
+                        put("max_results", 5)
+                    })
+                }
             }
             putJsonArray("messages") {
                 add(buildJsonObject {

@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -248,7 +249,9 @@ fun HomeScreen(
                 onGallery = onGallery,
                 onCamera = onCamera,
                 model = settings.model,
-                usingFree = settings.usingFreeKey
+                usingFree = settings.usingFreeKey,
+                webSearch = settings.webSearch,
+                onToggleWebSearch = { vm.setWebSearch(!settings.webSearch) }
             )
             Column(
                 Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -421,7 +424,9 @@ private fun HomeComposer(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
     model: String,
-    usingFree: Boolean
+    usingFree: Boolean,
+    webSearch: Boolean,
+    onToggleWebSearch: () -> Unit
 ) {
     val colors = LocalClaudioColors.current
     val shape = RoundedCornerShape(26)
@@ -533,6 +538,33 @@ private fun HomeComposer(
                     )
                 }
                 Spacer(Modifier.weight(1f))
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (webSearch) colors.accent.copy(alpha = 0.16f) else colors.surface2)
+                        .border(
+                            1.dp,
+                            if (webSearch) colors.accent.copy(alpha = 0.35f) else colors.outline,
+                            RoundedCornerShape(50)
+                        )
+                        .clickable(onClick = onToggleWebSearch)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Public,
+                        contentDescription = "Toggle web search",
+                        tint = if (webSearch) colors.accent else colors.textMuted,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        if (webSearch) "Web on" else "Web",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (webSearch) colors.accent else colors.textMuted
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
                 Text(
                     if (usingFree) "Free" else "BYOK",
                     style = MaterialTheme.typography.labelSmall,

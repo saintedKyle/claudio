@@ -11,6 +11,8 @@ Claudio is a warm, photo-first study companion for Android. Photograph any quest
 - **Type anything**: the home composer starts a conversation with or without a photo.
 - **Add photos anytime**: attach a new photo to an ongoing conversation from the chat composer, with captions if you like.
 - **Real tutoring**: streaming answers rendered as rich markdown — headings, numbered steps, bold results, code blocks, math typography and follow-up questions in the same thread.
+- **Structured answer cards**: every study answer is split into a highlighted **Final answer** card, a **Step by step** card, and a **Notebook** card with a one-tap copy button for exactly what to write down.
+- **Live web search**: tap **Web** in the composer to ground answers in current results. Sources are cited as clickable links; can be toggled off to save the search fee.
 - **Live thinking trace**: reasoning models stream their thought process into a collapsible "Thinking" panel with a live timer, which folds into "Thought for Ns" once the answer begins.
 - **It can draw**: ask for an angle, triangle, graph or labelled diagram and Claudio returns a real SVG rendered as a crisp paper card with fullscreen view and copy-SVG.
 - **Warm-black theme studio**: choose an accent (Ember, Amber, Sage, Ocean, Iris, Rose, Mono), a background family (Espresso, Graphite, Midnight, AMOLED), your message style, text size and reduced motion. Themes animate smoothly and persist.

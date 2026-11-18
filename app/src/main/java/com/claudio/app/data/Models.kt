@@ -35,6 +35,7 @@ data class Settings(
     val customKey: String = "",
     val baseUrl: String = DEFAULT_BASE_URL,
     val model: String = DEFAULT_MODEL,
+    val webSearch: Boolean = false,
     val theme: ThemePrefs = ThemePrefs(),
     val loaded: Boolean = false
 ) {

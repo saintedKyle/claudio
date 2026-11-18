@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
@@ -111,6 +112,7 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
     val session by vm.current.collectAsState()
     val streaming by vm.streaming.collectAsState()
     val error by vm.error.collectAsState()
+    val settings by vm.settings.collectAsState()
     val pendingImage by vm.pendingImage.collectAsState()
     val attaching by vm.loadingImage.collectAsState()
     var input by rememberSaveable { mutableStateOf("") }
@@ -225,7 +227,8 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
                         // a growing streaming item makes it pulse/flicker per token.
                         AssistantMessage(
                             message = message,
-                            isStreamingTail = isTail
+                            isStreamingTail = isTail,
+                            webSearch = settings.webSearch
                         )
                     }
                 }
@@ -247,6 +250,8 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
                 onValueChange = { input = it },
                 streaming = streaming,
                 model = current.model,
+                webSearch = settings.webSearch,
+                onToggleWebSearch = { vm.setWebSearch(!settings.webSearch) },
                 pendingImage = pendingImage,
                 attaching = attaching,
                 onTakePhoto = launchCamera,
@@ -334,6 +339,7 @@ private fun UserMessage(message: ChatMessage, modifier: Modifier = Modifier) {
 private fun AssistantMessage(
     message: ChatMessage,
     isStreamingTail: Boolean,
+    webSearch: Boolean,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalClaudioColors.current
@@ -391,7 +397,11 @@ private fun AssistantMessage(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypingDots()
                 Spacer(Modifier.width(9.dp))
-                Text("Reading your question", style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
+                Text(
+                    if (webSearch) "Searching the web…" else "Reading your question",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textMuted
+                )
             }
         } else {
             MarkdownText(message.text, live = isStreamingTail)
@@ -471,6 +481,8 @@ private fun ChatComposer(
     onValueChange: (String) -> Unit,
     streaming: Boolean,
     model: String,
+    webSearch: Boolean,
+    onToggleWebSearch: () -> Unit,
     pendingImage: ImageBitmap?,
     attaching: Boolean,
     onTakePhoto: () -> Unit,
@@ -690,6 +702,33 @@ private fun ChatComposer(
                 Text("Writing…", style = MaterialTheme.typography.labelSmall, color = colors.accent)
             } else if (pendingImage != null) {
                 Text("Photo ready", style = MaterialTheme.typography.labelSmall, color = colors.accent)
+            }
+            Spacer(Modifier.width(8.dp))
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (webSearch) colors.accent.copy(alpha = 0.16f) else colors.surface2)
+                    .border(
+                        1.dp,
+                        if (webSearch) colors.accent.copy(alpha = 0.35f) else colors.outline,
+                        RoundedCornerShape(50)
+                    )
+                    .clickable(onClick = onToggleWebSearch)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.Public,
+                    contentDescription = "Toggle web search",
+                    tint = if (webSearch) colors.accent else colors.textMuted,
+                    modifier = Modifier.size(11.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    if (webSearch) "Web on" else "Web",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (webSearch) colors.accent else colors.textMuted
+                )
             }
         }
     }
