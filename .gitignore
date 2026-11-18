@@ -11,3 +11,7 @@ captures/
 *.aab
 *.keystore
 !debug.keystore
+# local debug scratch
+build.log
+jobs.json
+repo.json
