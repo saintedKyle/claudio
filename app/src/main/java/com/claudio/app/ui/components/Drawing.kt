@@ -1,7 +1,8 @@
 package com.claudio.app.ui.components
 
+import android.graphics.Bitmap
 import android.graphics.RectF
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -31,10 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.claudio.app.ui.theme.Amber
@@ -44,10 +49,11 @@ import com.claudio.app.ui.theme.Surface2
 import com.claudio.app.ui.theme.TextMuted
 import com.claudio.app.ui.theme.TextPrimary
 import com.caverock.androidsvg.SVG
+import kotlin.math.roundToInt
 
 private val Paper = Color(0xFFFDFBF3)
 
-private data class RenderedDrawing(val picture: android.graphics.Picture, val aspect: Float)
+private data class RenderedDrawing(val image: ImageBitmap, val aspect: Float)
 
 private fun renderSvg(source: String): RenderedDrawing? = runCatching {
     val cleaned = source
@@ -55,10 +61,16 @@ private fun renderSvg(source: String): RenderedDrawing? = runCatching {
         .replace(Regex("on\\w+\\s*=\\s*\"[^\"]*\"", RegexOption.IGNORE_CASE), "")
     val svg = SVG.getFromString(cleaned)
     val box = svg.documentViewBox
-    val aspect = if (box != null && box.height() > 0f) box.width() / box.height() else 4f / 3f
-    svg.setDocumentWidth(800f)
-    svg.setDocumentHeight(800f / aspect)
-    RenderedDrawing(svg.renderToPicture(), aspect.coerceIn(0.4f, 3f))
+    val aspect = (if (box != null && box.height() > 0f) box.width() / box.height() else 4f / 3f).coerceIn(0.4f, 3f)
+    svg.setDocumentWidth(1000f)
+    svg.setDocumentHeight(1000f / aspect)
+    val picture = svg.renderToPicture()
+    val width = 1000
+    val height = (1000f / aspect).roundToInt().coerceAtLeast(1)
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    canvas.drawPicture(picture, null, RectF(0f, 0f, width.toFloat(), height.toFloat()))
+    RenderedDrawing(bitmap.asImageBitmap(), aspect)
 }.getOrNull()
 
 @Composable
@@ -76,7 +88,7 @@ fun DrawingCard(svgSource: String) {
                 .padding(14.dp)
         ) {
             Text("Claudio tried to draw, but the SVG couldn't be rendered:", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            Text(svgSource, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 11.sp, color = Cyan)
+            Text(svgSource, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Cyan)
         }
         return
     }
@@ -96,7 +108,12 @@ fun DrawingCard(svgSource: String) {
                 .background(Paper)
                 .clickable { fullscreen = true }
         ) {
-            DrawingCanvas(drawing, Modifier.fillMaxSize())
+            Image(
+                bitmap = drawing.image,
+                contentDescription = "Claudio's drawing",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
         }
         Row(
             Modifier.fillMaxWidth().padding(top = 8.dp, start = 4.dp, end = 4.dp),
@@ -141,7 +158,12 @@ fun DrawingCard(svgSource: String) {
                             .clip(RoundedCornerShape(14.dp))
                             .background(Paper)
                     ) {
-                        DrawingCanvas(drawing, Modifier.fillMaxSize())
+                        Image(
+                            bitmap = drawing.image,
+                            contentDescription = "Claudio's drawing, full screen",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                     Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.FullscreenExit, null, tint = TextPrimary, modifier = Modifier.size(16.dp))
@@ -150,19 +172,6 @@ fun DrawingCard(svgSource: String) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DrawingCanvas(drawing: RenderedDrawing, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        drawIntoCanvas { canvas ->
-            canvas.nativeCanvas.drawPicture(
-                drawing.picture,
-                null,
-                RectF(0f, 0f, size.width, size.height)
-            )
         }
     }
 }
