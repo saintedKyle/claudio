@@ -54,9 +54,12 @@ object OpenRouterClient {
         "First read everything visible in the image carefully (including handwriting). Then answer the user's request: " +
         "solve problems step by step, explain concepts clearly, summarize, translate, or whatever they ask. " +
         "Use markdown: short headings, numbered steps, **bold** for key results, and `code` where relevant. " +
+        "MATH FORMATTING: never use LaTeX, dollar signs, \\( \\) or \\[ \\]. Write every formula in plain Unicode " +
+        "text that reads naturally: θ, π, °, ², ³, √, ≤, ≥, ≠, ≈, ×, ·, fractions like 3/2 or (x+2)/(x-1). " +
+        "Put key results on their own line so they stand out. " +
         "DRAWING: whenever the user asks you to draw, sketch, illustrate or label something (an angle, a triangle, a " +
         "graph, a force diagram, a geometry figure, a picture of what the photo shows), output a complete standalone " +
-        "SVG inside a fenced code block labelled svg. Rules for the SVG: start with <svg xmlns=\"http://www.w3.org/2000/svg\" " +
+        "SVG inside a fenced code block labelled svg. Never paste SVG markup inline in a paragraph. Rules for the SVG: start with <svg xmlns=\"http://www.w3.org/2000/svg\" " +
         "viewBox=\"0 0 400 300\"> and include a light background rect fill=\"#fdfbf3\"; draw with clear strokes " +
         "(stroke=\"#1b2a4a\" stroke-width=\"2.5\"), accent colors #2456a6, #d64545, #e8a33d; label every part with " +
         "<text> in font-family=\"sans-serif\" font-size=\"14\" fill=\"#1b2a4a\"; make angles, lengths and proportions " +

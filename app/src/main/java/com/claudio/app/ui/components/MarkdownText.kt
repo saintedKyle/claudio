@@ -1,6 +1,7 @@
 package com.claudio.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,14 +21,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,10 +43,15 @@ import com.claudio.app.ui.theme.TextPrimary
 import com.claudio.app.ui.theme.TextSecondary
 import com.claudio.app.ui.theme.Violet
 
+private val MathInk = Color(0xFFFFE0B0)
+private val MathPlate = Color(0x14F59E0B)
+private val MathPlateEdge = Color(0x59F59E0B)
+
 private sealed interface Block {
     data class Heading(val level: Int, val text: String) : Block
     data class Para(val text: String) : Block
     data class Code(val text: String, val lang: String) : Block
+    data class Math(val text: String) : Block
     data class ListItem(val marker: String, val text: String) : Block
     data class Quote(val text: String) : Block
     data object Rule : Block
@@ -64,7 +73,11 @@ private fun parseBlocks(markdown: String): List<Block> {
         val line = raw.trimEnd()
         if (line.trim().startsWith("```")) {
             if (inCode) {
-                blocks.add(Block.Code(code.toString().trimEnd(), codeLang))
+                val content = code.toString().trimEnd()
+                when (codeLang) {
+                    "math", "latex", "tex" -> blocks.add(Block.Math(content))
+                    else -> blocks.add(Block.Code(content, codeLang))
+                }
                 code.clear()
                 codeLang = ""
             } else {
@@ -106,20 +119,53 @@ private fun parseBlocks(markdown: String): List<Block> {
             }
         }
     }
-    if (inCode && code.isNotBlank()) blocks.add(Block.Code(code.toString().trimEnd(), codeLang))
+    if (inCode && code.isNotBlank()) {
+        val content = code.toString().trimEnd()
+        if (codeLang == "math" || codeLang == "latex" || codeLang == "tex") blocks.add(Block.Math(content))
+        else blocks.add(Block.Code(content, codeLang))
+    }
     flushParagraph()
     return blocks
 }
 
+private val mathSpan = SpanStyle(
+    fontFamily = FontFamily.Serif,
+    fontStyle = FontStyle.Italic,
+    fontWeight = FontWeight.Medium,
+    color = MathInk
+)
+
 private fun inlineMarkdown(text: String): AnnotatedString = buildAnnotatedString {
     var i = 0
     while (i < text.length) {
+        if (text[i] == '$') {
+            val delim = if (text.startsWith("$$", i)) "$$" else "$"
+            val end = text.indexOf(delim, i + delim.length)
+            if (end > i + delim.length) {
+                val inner = text.substring(i + delim.length, end)
+                if (inner.isNotBlank() && inner == inner.trim()) {
+                    withStyle(mathSpan) { append(latexToUnicode(inner)) }
+                    i = end + delim.length
+                    continue
+                }
+            }
+        }
+        val next = text.indexOfAny(charArrayOf('$', '*', '`'), i)
+        if (next < 0) {
+            append(latexToUnicode(text.substring(i)))
+            break
+        }
+        if (next > i) {
+            append(latexToUnicode(text.substring(i, next)))
+            i = next
+            if (text[i] == '$') continue
+        }
         when {
             text.startsWith("**", i) -> {
                 val end = text.indexOf("**", i + 2)
                 if (end > i + 2) {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = TextPrimary)) {
-                        append(inlinePlain(text.substring(i + 2, end)))
+                        append(inlineMarkdown(text.substring(i + 2, end)))
                     }
                     i = end + 2
                 } else { append(text[i]); i++ }
@@ -136,7 +182,7 @@ private fun inlineMarkdown(text: String): AnnotatedString = buildAnnotatedString
             text[i] == '*' -> {
                 val end = text.indexOf('*', i + 1)
                 if (end > i + 1) {
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(text.substring(i + 1, end)) }
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(inlineMarkdown(text.substring(i + 1, end))) }
                     i = end + 1
                 } else { append(text[i]); i++ }
             }
@@ -145,18 +191,16 @@ private fun inlineMarkdown(text: String): AnnotatedString = buildAnnotatedString
     }
 }
 
-private fun inlinePlain(text: String): String = text.replace("`", "")
-
 @Composable
-fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
-    val blocks = remember(markdown) { parseBlocks(markdown) }
+fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean = false) {
+    val blocks = remember(markdown) { parseBlocks(normalizeRichText(markdown)) }
     SelectionContainer {
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(9.dp)) {
             blocks.forEach { block ->
                 when (block) {
                     is Block.Heading -> {
                         val size = when (block.level) { 1 -> 21.sp; 2 -> 18.sp; else -> 16.sp }
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             if (block.level <= 2) {
                                 Box(
                                     Modifier
@@ -178,14 +222,33 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
                     }
                     is Block.Para -> Text(
                         inlineMarkdown(block.text),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 25.sp),
                         color = TextPrimary
                     )
+                    is Block.Math -> Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MathPlate)
+                            .border(1.dp, MathPlateEdge, RoundedCornerShape(14.dp))
+                            .padding(horizontal = 16.dp, vertical = 13.dp)
+                    ) {
+                        Text(
+                            latexToUnicode(block.text),
+                            fontFamily = FontFamily.Serif,
+                            fontStyle = FontStyle.Italic,
+                            fontSize = 17.sp,
+                            lineHeight = 27.sp,
+                            color = MathInk,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     is Block.Code -> {
-                        if (block.lang == "svg" || block.text.trimStart().startsWith("<svg")) {
-                            DrawingCard(block.text)
-                        } else {
-                            Box(
+                        when {
+                            block.lang == "svg-pending" -> DrawingPending(live)
+                            block.lang == "svg" || block.text.trimStart().startsWith("<svg") -> DrawingCard(block.text)
+                            else -> Box(
                                 Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
@@ -213,7 +276,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
                         )
                         Text(
                             inlineMarkdown(block.text),
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 25.sp),
                             color = TextPrimary,
                             modifier = Modifier.weight(1f)
                         )

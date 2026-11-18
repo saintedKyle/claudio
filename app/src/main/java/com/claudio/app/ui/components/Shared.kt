@@ -26,13 +26,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.claudio.app.ui.theme.Mint
 import com.claudio.app.ui.theme.Surface2
 import com.claudio.app.ui.theme.TextMuted
 import com.claudio.app.ui.theme.TextPrimary
+import com.claudio.app.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
 fun timeAgo(timestamp: Long): String {
@@ -96,9 +100,20 @@ fun TopBar(
         IconBubble(Icons.AutoMirrored.Filled.ArrowBack, onBack, contentDescription = "Back")
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    brush = Brush.linearGradient(listOf(TextPrimary, Color(0xFFC9B4FF)))
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(Mint))
+                    Spacer(Modifier.width(6.dp))
+                    Text(subtitle, style = MaterialTheme.typography.labelSmall, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
         trailing()

@@ -43,6 +43,7 @@ import com.claudio.app.ui.components.AuroraBackground
 import com.claudio.app.ui.components.GradientButton
 import com.claudio.app.ui.components.OwlLogo
 import com.claudio.app.ui.components.TopBar
+import com.claudio.app.ui.components.previewText
 import com.claudio.app.ui.components.timeAgo
 import com.claudio.app.ui.theme.Cyan
 import com.claudio.app.ui.theme.Danger
@@ -118,7 +119,7 @@ fun HistoryScreen(
                                 val preview = session.messages.lastOrNull { it.role == "assistant" }?.text
                                     ?: session.messages.firstOrNull()?.text ?: ""
                                 Text(
-                                    preview.replace(Regex("[#*`>]"), "").take(90),
+                                    previewText(preview),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextSecondary,
                                     maxLines = 2,

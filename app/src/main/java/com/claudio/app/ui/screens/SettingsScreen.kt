@@ -178,7 +178,7 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                 ) {
                     Text("About Claudio", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                     Text(
-                        "Claudio v1.1.0 · a study companion that reads any photo of a question and teaches you the answer. " +
+                        "Claudio v1.2.0 · a study companion that reads any photo of a question and teaches you the answer. " +
                             "It is BYOK: you bring an OpenRouter (or any OpenAI-compatible) API key, and requests go straight from your phone to the provider. " +
                             "No accounts, no analytics, no servers in between. Conversations are stored only on this device.",
                         style = MaterialTheme.typography.bodySmall,

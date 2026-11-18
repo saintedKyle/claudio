@@ -1,9 +1,18 @@
 package com.claudio.app.ui.screens
 
-import android.widget.Toast
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
@@ -41,17 +51,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.AnnotatedString
@@ -72,12 +84,14 @@ import com.claudio.app.ui.theme.Magenta
 import com.claudio.app.ui.theme.Mint
 import com.claudio.app.ui.theme.Surface1
 import com.claudio.app.ui.theme.Surface2
+import com.claudio.app.ui.theme.Surface3
 import com.claudio.app.ui.theme.TextMuted
 import com.claudio.app.ui.theme.TextPrimary
 import com.claudio.app.ui.theme.TextSecondary
 import com.claudio.app.ui.theme.Violet
 import com.claudio.app.util.ImageUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -188,8 +202,10 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .shadow(18.dp, RoundedCornerShape(28.dp), clip = false, ambientColor = Violet, spotColor = Magenta)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Surface1)
+                    .background(Brush.verticalGradient(listOf(Color(0xFF251C47), Surface1)))
+                    .border(1.dp, Brush.horizontalGradient(listOf(Violet.copy(alpha = 0.55f), Magenta.copy(alpha = 0.35f), Cyan.copy(alpha = 0.4f))), RoundedCornerShape(28.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -222,12 +238,20 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                     }
                 } else {
                     val canSend = input.isNotBlank()
+                    val interaction = remember { MutableInteractionSource() }
+                    val pressed by interaction.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (pressed) 0.88f else 1f,
+                        animationSpec = spring(dampingRatio = 0.5f, stiffness = 800f),
+                        label = "send"
+                    )
                     Box(
                         Modifier
+                            .graphicsLayer { scaleX = scale; scaleY = scale }
                             .size(46.dp)
                             .clip(CircleShape)
                             .background(if (canSend) Brush.horizontalGradient(listOf(Violet, Magenta)) else Brush.horizontalGradient(listOf(Surface2, Surface2)))
-                            .clickable(enabled = canSend) {
+                            .clickable(interactionSource = interaction, indication = null, enabled = canSend) {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 vm.followUp(input)
                                 input = ""
@@ -257,6 +281,7 @@ private fun UserBubble(message: ChatMessage, modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .size(220.dp)
                         .clip(RoundedCornerShape(20.dp))
+                        .border(2.dp, Brush.linearGradient(listOf(Violet, Magenta, Cyan)), RoundedCornerShape(20.dp))
                 )
                 Spacer(Modifier.height(6.dp))
             }
@@ -265,8 +290,10 @@ private fun UserBubble(message: ChatMessage, modifier: Modifier = Modifier) {
             Box(
                 Modifier
                     .widthIn(max = 300.dp)
+                    .shadow(12.dp, RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp), clip = false, ambientColor = Violet, spotColor = Magenta)
                     .clip(RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp))
                     .background(Brush.horizontalGradient(listOf(Violet, Magenta)))
+                    .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Text(message.text, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
@@ -278,36 +305,63 @@ private fun UserBubble(message: ChatMessage, modifier: Modifier = Modifier) {
 @Composable
 private fun AssistantBubble(message: ChatMessage, isStreamingTail: Boolean, modifier: Modifier = Modifier) {
     val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1600)
+            copied = false
+        }
+    }
+    val caret = rememberInfiniteTransition(label = "caret")
+    val caretAlpha by caret.animateFloat(
+        initialValue = 0.25f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+        label = "caretAlpha"
+    )
+    val cardShape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         OwlLogo(size = 30.dp)
         Spacer(Modifier.width(10.dp))
         Column(
             Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp))
-                .background(Surface1)
+                .shadow(16.dp, cardShape, clip = false, ambientColor = Violet, spotColor = Magenta)
+                .clip(cardShape)
+                .background(Brush.verticalGradient(listOf(Color(0xFF261D49), Color(0xFF1B1438))))
+                .border(1.dp, Brush.linearGradient(listOf(Violet.copy(alpha = 0.6f), Magenta.copy(alpha = 0.28f), Cyan.copy(alpha = 0.42f))), cardShape)
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Claudio", style = MaterialTheme.typography.labelMedium, color = Amber)
                 Spacer(Modifier.weight(1f))
                 if (message.text.isNotBlank()) {
-                    Icon(
-                        Icons.Filled.ContentCopy,
-                        "Copy answer",
-                        tint = TextMuted,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(if (copied) Mint.copy(alpha = 0.16f) else Surface3)
                             .clickable {
                                 clipboard.setText(AnnotatedString(message.text))
-                                Toast.makeText(context, "Answer copied", Toast.LENGTH_SHORT).show()
+                                copied = true
                             }
-                    )
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                            "Copy answer",
+                            tint = if (copied) Mint else TextSecondary,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            if (copied) "Copied" else "Copy",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (copied) Mint else TextSecondary
+                        )
+                    }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             if (message.reasoning != null) {
                 ThinkingPanel(message, live = isStreamingTail && message.reasoningMs == null)
                 Spacer(Modifier.height(10.dp))
@@ -315,10 +369,16 @@ private fun AssistantBubble(message: ChatMessage, isStreamingTail: Boolean, modi
             if (message.text.isBlank() && isStreamingTail) {
                 TypingDots(Modifier.padding(vertical = 6.dp))
             } else {
-                MarkdownText(message.text)
+                MarkdownText(message.text, live = isStreamingTail)
                 if (isStreamingTail) {
                     Spacer(Modifier.height(8.dp))
-                    Box(Modifier.width(10.dp).height(18.dp).clip(RoundedCornerShape(2.dp)).background(Cyan))
+                    Box(
+                        Modifier
+                            .width(10.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Cyan.copy(alpha = caretAlpha))
+                    )
                 }
             }
         }
