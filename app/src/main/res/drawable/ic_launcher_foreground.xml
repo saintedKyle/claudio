@@ -4,22 +4,34 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- owl body -->
+    <group android:pivotX="54" android:pivotY="54" android:rotation="0">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFD97757" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="45">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFE7A45F" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="90">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFD97757" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="135">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFE7A45F" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="180">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFD97757" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="225">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFE7A45F" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="270">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFD97757" />
+    </group>
+    <group android:pivotX="54" android:pivotY="54" android:rotation="315">
+        <path android:pathData="M50,18 L58,18 L55.5,38 L52.5,38 Z" android:fillColor="#FFE7A45F" />
+    </group>
     <path
-        android:pathData="M54,30 C40,30 32,42 32,56 C32,70 42,80 54,80 C66,80 76,70 76,56 C76,42 68,30 54,30 Z"
-        android:fillColor="#FF8B5CF6" />
-    <!-- ear tufts -->
-    <path android:pathData="M36,36 L40,26 L46,34 Z" android:fillColor="#FF8B5CF6" />
-    <path android:pathData="M72,36 L68,26 L62,34 Z" android:fillColor="#FF8B5CF6" />
-    <!-- eyes -->
-    <path android:pathData="M45,52 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" android:fillColor="#FFF5F1FF" />
-    <path android:pathData="M63,52 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" android:fillColor="#FFF5F1FF" />
-    <path android:pathData="M45,52 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" android:fillColor="#FF1E1B4B" />
-    <path android:pathData="M63,52 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" android:fillColor="#FF1E1B4B" />
-    <!-- beak -->
-    <path android:pathData="M54,58 L50,64 L54,70 L58,64 Z" android:fillColor="#FFF59E0B" />
-    <!-- graduation cap -->
-    <path android:pathData="M54,18 L78,27 L54,36 L30,27 Z" android:fillColor="#FF1E1B4B" />
-    <path android:pathData="M74,29 L74,40 L72,40 L72,30 Z" android:fillColor="#FFF59E0B" />
-    <path android:pathData="M73,40 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" android:fillColor="#FFF59E0B" />
+        android:pathData="M54,54 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0"
+        android:fillColor="#FFF4EFE6" />
+    <path
+        android:pathData="M54,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"
+        android:fillColor="#FF171310" />
 </vector>

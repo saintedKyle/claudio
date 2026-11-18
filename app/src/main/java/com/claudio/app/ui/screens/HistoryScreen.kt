@@ -1,6 +1,7 @@
 package com.claudio.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,19 +41,12 @@ import androidx.compose.ui.unit.dp
 import com.claudio.app.ClaudioViewModel
 import com.claudio.app.data.Session
 import com.claudio.app.ui.components.AuroraBackground
+import com.claudio.app.ui.components.ClaudioMark
 import com.claudio.app.ui.components.GradientButton
-import com.claudio.app.ui.components.OwlLogo
 import com.claudio.app.ui.components.TopBar
 import com.claudio.app.ui.components.previewText
 import com.claudio.app.ui.components.timeAgo
-import com.claudio.app.ui.theme.Cyan
-import com.claudio.app.ui.theme.Danger
-import com.claudio.app.ui.theme.Surface1
-import com.claudio.app.ui.theme.Surface2
-import com.claudio.app.ui.theme.TextMuted
-import com.claudio.app.ui.theme.TextPrimary
-import com.claudio.app.ui.theme.TextSecondary
-import com.claudio.app.ui.theme.Violet
+import com.claudio.app.ui.theme.LocalClaudioColors
 
 @Composable
 fun HistoryScreen(
@@ -61,6 +55,7 @@ fun HistoryScreen(
     onBack: () -> Unit
 ) {
     val sessions by vm.sessions.collectAsState()
+    val colors = LocalClaudioColors.current
     var toDelete by remember { mutableStateOf<Session?>(null) }
 
     AuroraBackground {
@@ -72,20 +67,21 @@ fun HistoryScreen(
         ) {
             TopBar(
                 title = "History",
-                subtitle = "${sessions.size} saved conversation${if (sessions.size == 1) "" else "s"} · stored on this device",
+                subtitle = "${sessions.size} saved conversation${if (sessions.size == 1) "" else "s"} · on this device",
                 onBack = onBack
             )
             if (sessions.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                        OwlLogo(size = 100.dp)
-                        Spacer(Modifier.height(16.dp))
-                        Text("No questions yet", style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+                        ClaudioMark(size = 88.dp)
+                        Spacer(Modifier.height(18.dp))
+                        Text("No questions yet", style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
                         Spacer(Modifier.height(6.dp))
                         Text(
                             "Snap your first question and it will show up here, saved privately on your phone.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            color = colors.textSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(Modifier.height(20.dp))
                         GradientButton(text = "Ask your first question", onClick = onBack)
@@ -98,20 +94,24 @@ fun HistoryScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(sessions, key = { it.id }) { session ->
+                        val shape = RoundedCornerShape(20)
                         Row(
                             Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Surface1)
+                                .clip(shape)
+                                .background(colors.surface1)
+                                .border(1.dp, colors.outline, shape)
                                 .clickable { onOpen(session.id) }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            ClaudioMark(size = 26.dp, animated = false)
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     session.title,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = TextPrimary,
+                                    color = colors.textPrimary,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -121,7 +121,7 @@ fun HistoryScreen(
                                 Text(
                                     previewText(preview),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary,
+                                    color = colors.textSecondary,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -130,24 +130,29 @@ fun HistoryScreen(
                                     Box(
                                         Modifier
                                             .clip(RoundedCornerShape(50))
-                                            .background(Surface2)
+                                            .background(colors.surface2)
+                                            .border(1.dp, colors.outline, RoundedCornerShape(50))
                                             .padding(horizontal = 10.dp, vertical = 4.dp)
                                     ) {
                                         Text(
                                             session.model.substringAfterLast('/'),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = Cyan
+                                            color = colors.info
                                         )
                                     }
                                     Spacer(Modifier.width(8.dp))
-                                    Text(timeAgo(session.updatedAt), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                                    Text(
+                                        timeAgo(session.updatedAt),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.textMuted
+                                    )
                                 }
                             }
                             Spacer(Modifier.width(8.dp))
                             Icon(
                                 Icons.Filled.DeleteOutline,
                                 "Delete",
-                                tint = TextMuted,
+                                tint = colors.textMuted,
                                 modifier = Modifier
                                     .size(22.dp)
                                     .clip(RoundedCornerShape(8.dp))
@@ -163,17 +168,22 @@ fun HistoryScreen(
     toDelete?.let { session ->
         AlertDialog(
             onDismissRequest = { toDelete = null },
-            containerColor = Surface2,
-            title = { Text("Delete this conversation?", color = TextPrimary) },
-            text = { Text("\"${session.title}\" will be removed from this device. This can't be undone.", color = TextSecondary) },
+            containerColor = colors.surface2,
+            title = { Text("Delete this conversation?", color = colors.textPrimary) },
+            text = {
+                Text(
+                    "\"${session.title}\" will be removed from this device. This can't be undone.",
+                    color = colors.textSecondary
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { vm.deleteSession(session.id); toDelete = null }) {
-                    Text("Delete", color = Danger)
+                    Text("Delete", color = colors.danger)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { toDelete = null }) {
-                    Text("Keep", color = Violet)
+                    Text("Keep", color = colors.accent)
                 }
             }
         )

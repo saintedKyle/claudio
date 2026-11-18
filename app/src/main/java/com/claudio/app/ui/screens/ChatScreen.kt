@@ -1,27 +1,29 @@
 package com.claudio.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -34,8 +36,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
@@ -43,8 +49,6 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,72 +58,89 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.claudio.app.ClaudioViewModel
+import com.claudio.app.data.BubbleStyle
 import com.claudio.app.data.ChatMessage
-import com.claudio.app.data.Session
 import com.claudio.app.ui.components.AuroraBackground
+import com.claudio.app.ui.components.ClaudioMark
+import com.claudio.app.ui.components.IconBubble
 import com.claudio.app.ui.components.MarkdownText
-import com.claudio.app.ui.components.OwlLogo
 import com.claudio.app.ui.components.ThinkingPanel
 import com.claudio.app.ui.components.TopBar
 import com.claudio.app.ui.components.TypingDots
-import com.claudio.app.ui.theme.Amber
-import com.claudio.app.ui.theme.Cyan
-import com.claudio.app.ui.theme.Danger
-import com.claudio.app.ui.theme.Magenta
-import com.claudio.app.ui.theme.Mint
-import com.claudio.app.ui.theme.Surface1
-import com.claudio.app.ui.theme.Surface2
-import com.claudio.app.ui.theme.Surface3
-import com.claudio.app.ui.theme.TextMuted
-import com.claudio.app.ui.theme.TextPrimary
-import com.claudio.app.ui.theme.TextSecondary
-import com.claudio.app.ui.theme.Violet
+import com.claudio.app.ui.theme.LocalClaudioColors
+import com.claudio.app.ui.theme.LocalClaudioPrefs
 import com.claudio.app.util.ImageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.math.max
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
+fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
     val session by vm.current.collectAsState()
     val streaming by vm.streaming.collectAsState()
     val error by vm.error.collectAsState()
     var input by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
+    val colors = LocalClaudioColors.current
 
     val current = session
     if (current == null) {
         AuroraBackground {
-            Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+            ) {
                 TopBar(title = "Answer", onBack = onBack)
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("This conversation is no longer available.", color = TextMuted)
+                    Text("This conversation is no longer available.", color = colors.textMuted)
                 }
             }
         }
         return
     }
 
-    val lastText = current.messages.lastOrNull()?.text ?: ""
-    LaunchedEffect(current.messages.size, lastText) {
-        if (current.messages.isNotEmpty()) {
-            listState.scrollToItem(current.messages.size - 1, 1_000_000)
+    val messages = current.messages
+    val lastText = messages.lastOrNull()?.text ?: ""
+    val lastReasoning = messages.lastOrNull()?.reasoning ?: ""
+    var stickToBottom by remember(current.id) { mutableStateOf(true) }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }
+            .collect { (scrolling, canScrollForward) ->
+                if (scrolling && canScrollForward) stickToBottom = false
+                if (!scrolling && !canScrollForward) stickToBottom = true
+            }
+    }
+
+    LaunchedEffect(current.id) {
+        if (messages.isNotEmpty()) listState.scrollToItem(max(0, messages.lastIndex), Int.MAX_VALUE)
+    }
+
+    // Streamed text grows in place without re-running item placement animations.
+    LaunchedEffect(messages.size, lastText.length, lastReasoning.length) {
+        if (messages.isNotEmpty() && stickToBottom) {
+            listState.scrollToItem(messages.lastIndex, Int.MAX_VALUE)
         }
     }
 
@@ -136,138 +157,96 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                 subtitle = current.model.substringAfterLast('/'),
                 onBack = onBack,
                 trailing = {
-                    if (streaming) {
-                        Row(
-                            Modifier.clip(RoundedCornerShape(50)).background(Surface2).padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TypingDots()
-                            Spacer(Modifier.width(8.dp))
-                            Text("thinking", style = MaterialTheme.typography.labelSmall, color = Cyan)
-                        }
-                    }
+                    IconBubble(
+                        icon = Icons.Filled.Add,
+                        onClick = onNew,
+                        contentDescription = "New question"
+                    )
                 }
             )
 
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                items(current.messages, key = { it.id }) { message ->
-                    if (message.role == "user") {
-                        UserBubble(message, Modifier.animateItem())
+                items(messages, key = { it.id }, contentType = { it.role }) { message ->
+                    val isTail = streaming && message.id == messages.lastOrNull()?.id
+                    val entrance = if (isTail) {
+                        Modifier
                     } else {
-                        AssistantBubble(
+                        Modifier.animateItem(
+                            fadeInSpec = tween(260),
+                            placementSpec = null,
+                            fadeOutSpec = tween(160)
+                        )
+                    }
+                    if (message.role == "user") {
+                        UserMessage(message = message, modifier = entrance)
+                    } else {
+                        AssistantMessage(
                             message = message,
-                            isStreamingTail = streaming && message.id == current.messages.lastOrNull()?.id,
-                            modifier = Modifier.animateItem()
+                            isStreamingTail = isTail,
+                            modifier = entrance
                         )
                     }
                 }
             }
 
-            if (error != null) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF3B1220))
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Couldn't get an answer", style = MaterialTheme.typography.labelMedium, color = Danger)
-                        Text(error!!, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Row(
-                        Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(Danger)
-                            .clickable { vm.retry() }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Refresh, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Retry", style = MaterialTheme.typography.labelMedium, color = Color.White)
-                    }
+            AnimatedVisibility(
+                visible = error != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                val message = error
+                if (message != null) {
+                    ErrorCard(message = message, onRetry = vm::retry)
                 }
             }
 
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                    .shadow(18.dp, RoundedCornerShape(28.dp), clip = false, ambientColor = Violet, spotColor = Magenta)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF251C47), Surface1)))
-                    .border(1.dp, Brush.horizontalGradient(listOf(Violet.copy(alpha = 0.55f), Magenta.copy(alpha = 0.35f), Cyan.copy(alpha = 0.4f))), RoundedCornerShape(28.dp))
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    placeholder = { Text("Ask a follow-up…", color = TextMuted) },
-                    maxLines = 4,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = Magenta,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                if (streaming) {
-                    Box(
-                        Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(Danger)
-                            .clickable { vm.stopStreaming() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Stop, "Stop", tint = Color.White)
-                    }
-                } else {
-                    val canSend = input.isNotBlank()
-                    val interaction = remember { MutableInteractionSource() }
-                    val pressed by interaction.collectIsPressedAsState()
-                    val scale by animateFloatAsState(
-                        targetValue = if (pressed) 0.88f else 1f,
-                        animationSpec = spring(dampingRatio = 0.5f, stiffness = 800f),
-                        label = "send"
-                    )
-                    Box(
-                        Modifier
-                            .graphicsLayer { scaleX = scale; scaleY = scale }
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(if (canSend) Brush.horizontalGradient(listOf(Violet, Magenta)) else Brush.horizontalGradient(listOf(Surface2, Surface2)))
-                            .clickable(interactionSource = interaction, indication = null, enabled = canSend) {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                vm.followUp(input)
-                                input = ""
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = if (canSend) TextPrimary else TextMuted, modifier = Modifier.size(20.dp))
+            ChatComposer(
+                value = input,
+                onValueChange = { input = it },
+                streaming = streaming,
+                model = current.model,
+                onStop = vm::stopStreaming,
+                onSend = {
+                    val text = input.trim()
+                    if (text.isNotEmpty() && !streaming) {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.followUp(text)
+                        input = ""
                     }
                 }
-            }
+            )
         }
     }
 }
 
 @Composable
-private fun UserBubble(message: ChatMessage, modifier: Modifier = Modifier) {
+private fun UserMessage(message: ChatMessage, modifier: Modifier = Modifier) {
+    val colors = LocalClaudioColors.current
+    val prefs = LocalClaudioPrefs.current
+    val shape = RoundedCornerShape(22.dp, 22.dp, 6.dp, 22.dp)
+
+    val bubbleColor: Color
+    val bubbleBorder: Color
+    when (prefs.bubble) {
+        BubbleStyle.Soft -> {
+            bubbleColor = colors.surface2
+            bubbleBorder = colors.outline
+        }
+        BubbleStyle.Tint -> {
+            bubbleColor = colors.accent.copy(alpha = 0.16f)
+            bubbleBorder = colors.accent.copy(alpha = 0.34f)
+        }
+        BubbleStyle.Outline -> {
+            bubbleColor = Color.Transparent
+            bubbleBorder = colors.outline
+        }
+    }
+
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
         if (message.imageBase64 != null) {
             val bitmap by produceState<ImageBitmap?>(null, message.imageBase64) {
@@ -280,106 +259,256 @@ private fun UserBubble(message: ChatMessage, modifier: Modifier = Modifier) {
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(220.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .border(2.dp, Brush.linearGradient(listOf(Violet, Magenta, Cyan)), RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(18.dp))
+                        .border(1.dp, colors.outline, RoundedCornerShape(18.dp))
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(7.dp))
             }
         }
         if (message.text.isNotBlank()) {
             Box(
                 Modifier
                     .widthIn(max = 300.dp)
-                    .shadow(12.dp, RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp), clip = false, ambientColor = Violet, spotColor = Magenta)
-                    .clip(RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp))
-                    .background(Brush.horizontalGradient(listOf(Violet, Magenta)))
-                    .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clip(shape)
+                    .background(bubbleColor)
+                    .border(1.dp, bubbleBorder, shape)
+                    .padding(horizontal = 16.dp, vertical = 11.dp)
             ) {
-                Text(message.text, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+                Text(
+                    message.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.textPrimary
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AssistantBubble(message: ChatMessage, isStreamingTail: Boolean, modifier: Modifier = Modifier) {
+private fun AssistantMessage(
+    message: ChatMessage,
+    isStreamingTail: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalClaudioColors.current
     val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
     LaunchedEffect(copied) {
         if (copied) {
-            delay(1600)
+            delay(1500)
             copied = false
         }
     }
     val caret = rememberInfiniteTransition(label = "caret")
     val caretAlpha by caret.animateFloat(
-        initialValue = 0.25f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+        initialValue = 0.2f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(tween(720), RepeatMode.Reverse),
         label = "caretAlpha"
     )
-    val cardShape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        OwlLogo(size = 30.dp)
-        Spacer(Modifier.width(10.dp))
-        Column(
-            Modifier
-                .weight(1f)
-                .shadow(16.dp, cardShape, clip = false, ambientColor = Violet, spotColor = Magenta)
-                .clip(cardShape)
-                .background(Brush.verticalGradient(listOf(Color(0xFF261D49), Color(0xFF1B1438))))
-                .border(1.dp, Brush.linearGradient(listOf(Violet.copy(alpha = 0.6f), Magenta.copy(alpha = 0.28f), Cyan.copy(alpha = 0.42f))), cardShape)
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Claudio", style = MaterialTheme.typography.labelMedium, color = Amber)
-                Spacer(Modifier.weight(1f))
-                if (message.text.isNotBlank()) {
-                    Row(
-                        Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (copied) Mint.copy(alpha = 0.16f) else Surface3)
-                            .clickable {
-                                clipboard.setText(AnnotatedString(message.text))
-                                copied = true
-                            }
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
-                            "Copy answer",
-                            tint = if (copied) Mint else TextSecondary,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            if (copied) "Copied" else "Copy",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (copied) Mint else TextSecondary
-                        )
-                    }
-                }
+
+    Column(modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ClaudioMark(size = 20.dp, animated = false)
+            Spacer(Modifier.width(7.dp))
+            Text("Claudio", style = MaterialTheme.typography.labelMedium, color = colors.accent)
+            if (isStreamingTail) {
+                Spacer(Modifier.width(7.dp))
+                Box(
+                    Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(colors.accent.copy(alpha = caretAlpha))
+                )
             }
-            Spacer(Modifier.height(10.dp))
-            if (message.reasoning != null) {
-                ThinkingPanel(message, live = isStreamingTail && message.reasoningMs == null)
-                Spacer(Modifier.height(10.dp))
-            }
-            if (message.text.isBlank() && isStreamingTail) {
-                TypingDots(Modifier.padding(vertical = 6.dp))
-            } else {
-                MarkdownText(message.text, live = isStreamingTail)
-                if (isStreamingTail) {
-                    Spacer(Modifier.height(8.dp))
-                    Box(
-                        Modifier
-                            .width(10.dp)
-                            .height(18.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(Cyan.copy(alpha = caretAlpha))
+            Spacer(Modifier.weight(1f))
+            if (message.text.isNotBlank()) {
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(colors.surface2)
+                        .clickable {
+                            clipboard.setText(AnnotatedString(message.text))
+                            copied = true
+                        }
+                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                        contentDescription = "Copy answer",
+                        tint = if (copied) colors.success else colors.textMuted,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        if (copied) "Copied" else "Copy",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (copied) colors.success else colors.textMuted
                     )
                 }
+            }
+        }
+        Spacer(Modifier.height(9.dp))
+        if (message.reasoning != null) {
+            ThinkingPanel(message, live = isStreamingTail && message.reasoningMs == null)
+            Spacer(Modifier.height(11.dp))
+        }
+        if (message.text.isBlank() && isStreamingTail) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TypingDots()
+                Spacer(Modifier.width(9.dp))
+                Text("Reading your question", style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
+            }
+        } else {
+            MarkdownText(message.text, live = isStreamingTail)
+        }
+    }
+}
+
+@Composable
+private fun ErrorCard(message: String, onRetry: () -> Unit) {
+    val colors = LocalClaudioColors.current
+    val shape = RoundedCornerShape(18)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(shape)
+            .background(colors.danger.copy(alpha = 0.12f))
+            .border(1.dp, colors.danger.copy(alpha = 0.32f), shape)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Couldn't get an answer",
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.danger
+            )
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(colors.surface2)
+                .border(1.dp, colors.outline, RoundedCornerShape(50))
+                .clickable(onClick = onRetry)
+                .padding(horizontal = 13.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.Refresh,
+                contentDescription = null,
+                tint = colors.textPrimary,
+                modifier = Modifier.size(13.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text("Retry", style = MaterialTheme.typography.labelMedium, color = colors.textPrimary)
+        }
+    }
+}
+
+@Composable
+private fun ChatComposer(
+    value: String,
+    onValueChange: (String) -> Unit,
+    streaming: Boolean,
+    model: String,
+    onStop: () -> Unit,
+    onSend: () -> Unit
+) {
+    val colors = LocalClaudioColors.current
+    val shape = RoundedCornerShape(26)
+    val modelLabel = model.substringAfterLast('/')
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(colors.surface1)
+                .border(1.dp, colors.outline, shape)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.textPrimary),
+                cursorBrush = SolidColor(colors.accent),
+                maxLines = 5,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { onSend() }),
+                decorationBox = { inner ->
+                    Box(Modifier.padding(horizontal = 9.dp, vertical = 10.dp)) {
+                        if (value.isBlank()) {
+                            Text(
+                                "Reply to Claudio…",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textMuted
+                            )
+                        }
+                        inner()
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+            if (streaming) {
+                Box(
+                    Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(colors.surface2)
+                        .border(1.dp, colors.outline, CircleShape)
+                        .clickable(onClick = onStop),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Stop,
+                        contentDescription = "Stop",
+                        tint = colors.danger,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else {
+                val canSend = value.isNotBlank()
+                Box(
+                    Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(if (canSend) colors.accent else colors.surface2)
+                        .clickable(enabled = canSend, onClick = onSend),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = if (canSend) colors.backgroundDeep else colors.textMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                modelLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (streaming) {
+                Text("Writing…", style = MaterialTheme.typography.labelSmall, color = colors.accent)
             }
         }
     }

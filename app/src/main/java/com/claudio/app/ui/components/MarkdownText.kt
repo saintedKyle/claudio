@@ -35,17 +35,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.claudio.app.ui.theme.Amber
 import com.claudio.app.ui.theme.Cyan
+import com.claudio.app.ui.theme.LocalClaudioColors
 import com.claudio.app.ui.theme.Surface2
 import com.claudio.app.ui.theme.Surface3
 import com.claudio.app.ui.theme.TextPrimary
 import com.claudio.app.ui.theme.TextSecondary
-import com.claudio.app.ui.theme.Violet
 
 private val MathInk = Color(0xFFFFE0B0)
-private val MathPlate = Color(0x14F59E0B)
-private val MathPlateEdge = Color(0x59F59E0B)
 
 private sealed interface Block {
     data class Heading(val level: Int, val text: String) : Block
@@ -194,7 +191,9 @@ private fun inlineMarkdown(text: String): AnnotatedString = buildAnnotatedString
 @Composable
 fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean = false) {
     val blocks = remember(markdown) { parseBlocks(normalizeRichText(markdown)) }
-    SelectionContainer {
+    val colors = LocalClaudioColors.current
+    val accent = colors.accent
+    val content: @Composable () -> Unit = {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(9.dp)) {
             blocks.forEach { block ->
                 when (block) {
@@ -207,7 +206,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean 
                                         .width(4.dp)
                                         .height(if (block.level == 1) 22.dp else 18.dp)
                                         .clip(RoundedCornerShape(50))
-                                        .background(Amber)
+                                        .background(accent)
                                 )
                                 Spacer(Modifier.width(10.dp))
                             }
@@ -229,8 +228,8 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean 
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(MathPlate)
-                            .border(1.dp, MathPlateEdge, RoundedCornerShape(14.dp))
+                            .background(accent.copy(alpha = 0.08f))
+                            .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(14.dp))
                             .padding(horizontal = 16.dp, vertical = 13.dp)
                     ) {
                         Text(
@@ -253,6 +252,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean 
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(Surface2)
+                                    .border(1.dp, colors.outline, RoundedCornerShape(14.dp))
                                     .padding(14.dp)
                             ) {
                                 Text(
@@ -271,7 +271,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean 
                             block.marker,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Amber,
+                            color = accent,
                             modifier = Modifier.width(if (block.marker.length > 1) 30.dp else 18.dp)
                         )
                         Text(
@@ -282,7 +282,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean 
                         )
                     }
                     is Block.Quote -> Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                        Box(Modifier.width(3.dp).fillMaxHeight().clip(RoundedCornerShape(50)).background(Violet))
+                        Box(Modifier.width(3.dp).fillMaxHeight().clip(RoundedCornerShape(50)).background(accent))
                         Spacer(Modifier.width(12.dp))
                         Text(
                             inlineMarkdown(block.text),
@@ -292,10 +292,13 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, live: Boolean 
                         )
                     }
                     is Block.Rule -> Box(
-                        Modifier.fillMaxWidth().height(1.dp).background(Surface3)
+                        Modifier.fillMaxWidth().height(1.dp).background(colors.outline)
                     )
                 }
             }
         }
     }
+    // Selecting live text makes streaming answers re-layout constantly; only
+    // enable selection once the answer has settled.
+    if (live) content() else SelectionContainer { content() }
 }

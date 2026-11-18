@@ -6,12 +6,14 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.claudio.app.data.AppConfig
 import com.claudio.app.data.ChatMessage
 import com.claudio.app.data.HistoryStore
 import com.claudio.app.data.ModelInfo
 import com.claudio.app.data.Session
 import com.claudio.app.data.Settings
 import com.claudio.app.data.SettingsStore
+import com.claudio.app.data.ThemePrefs
 import com.claudio.app.net.OpenRouterClient
 import com.claudio.app.net.StreamEvent
 import com.claudio.app.util.ImageUtils
@@ -74,11 +76,28 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Saves connection settings. A blank key means "use Claudio Free". */
     fun saveSettings(apiKey: String, baseUrl: String, model: String) {
         viewModelScope.launch {
-            settingsStore.save(apiKey, baseUrl, model)
-            fetchModels(apiKey, baseUrl)
+            val key = apiKey.trim()
+            // Never send the built-in free key to an arbitrary endpoint.
+            val safeBase = if (key.isBlank()) Settings.DEFAULT_BASE_URL else baseUrl.trim()
+            val safeModel = model.trim().ifBlank { Settings.DEFAULT_MODEL }
+            settingsStore.save(key, safeBase, safeModel)
+            fetchModels(key.ifBlank { AppConfig.FREE_API_KEY }, safeBase)
         }
+    }
+
+    /** One tap back to the built-in key, default provider and a free model. */
+    fun useFreeKey() {
+        viewModelScope.launch {
+            settingsStore.save("", Settings.DEFAULT_BASE_URL, Settings.DEFAULT_MODEL)
+            fetchModels(AppConfig.FREE_API_KEY, Settings.DEFAULT_BASE_URL)
+        }
+    }
+
+    fun saveTheme(theme: ThemePrefs) {
+        viewModelScope.launch { settingsStore.saveTheme(theme) }
     }
 
     fun fetchModels(apiKey: String, baseUrl: String) {
@@ -92,9 +111,18 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
                 _freeModels.value = list
                 if (list.isEmpty()) {
                     _modelsError.value = "This provider returned no free models. Curated picks are shown instead."
-                } else if (settings.value.model == Settings.DEFAULT_MODEL) {
-                    val pick = list.firstOrNull { it.vision } ?: list.first()
-                    settingsStore.save(settings.value.apiKey, settings.value.baseUrl, pick.id)
+                    return@launch
+                }
+                val current = settings.value
+                val shouldAutoPick = current.usingFreeKey || current.model == Settings.DEFAULT_MODEL
+                if (shouldAutoPick) {
+                    val keepCurrent = list.any { it.id == current.model && it.vision }
+                    if (!keepCurrent) {
+                        val pick = pickFreeModel(list)
+                        if (pick != null) {
+                            settingsStore.save(current.customKey, current.baseUrl, pick.id)
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -104,6 +132,22 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
                 _modelsLoading.value = false
             }
         }
+    }
+
+    private fun pickFreeModel(list: List<ModelInfo>): ModelInfo? {
+        val favorites = listOf(
+            "nemotron-3.5-super-vl",
+            "gemma-4-31b",
+            "ling-3.2",
+            "gemma-4-26b",
+            "gemini",
+            "qwen2.5-vl",
+            "llama-3.2"
+        )
+        favorites.forEach { name ->
+            list.firstOrNull { it.vision && it.id.contains(name, ignoreCase = true) }?.let { return it }
+        }
+        return list.firstOrNull { it.vision } ?: list.firstOrNull()
     }
 
     fun loadImage(uri: Uri) {
@@ -132,11 +176,13 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
         pendingBase64 = null
     }
 
+    /** Starts a session from a photo, a typed question, or both. */
     fun startSession(question: String) {
-        val base64 = pendingBase64 ?: return
+        val base64 = pendingBase64
         val trimmed = question.trim()
+        if (base64 == null && trimmed.isEmpty()) return
         val session = Session(
-            title = trimmed.ifBlank { "Photo question" }.take(60),
+            title = trimmed.ifBlank { "Photo question" }.take(72),
             model = settings.value.model,
             messages = listOf(ChatMessage(role = "user", text = trimmed, imageBase64 = base64))
         )
@@ -184,9 +230,20 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
         _error.value = null
     }
 
+    /**
+     * Streams a completion into the current session.
+     *
+     * Deltas are coalesced into ~20 UI updates per second. Updating Compose on
+     * every token made the answer bubble visibly flicker; batching keeps the
+     * text smooth and the scroll position stable.
+     */
     private fun runCompletion() {
         streamJob?.cancel()
         val base = _current.value ?: return
+        if (settings.value.apiKey.isBlank()) {
+            _error.value = "No API key is configured in this build. Open Settings → Connection and add your own key."
+            return
+        }
         streamJob = viewModelScope.launch {
             _streaming.value = true
             _error.value = null
@@ -195,41 +252,64 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
                 updatedAt = System.currentTimeMillis()
             )
             _current.value = session
+
+            val reasoning = StringBuilder()
+            val answer = StringBuilder()
             var reasoningStart = 0L
+            var reasoningMs: Long? = null
+            var lastFlush = 0L
+
+            fun flush() {
+                val now = System.currentTimeMillis()
+                lastFlush = now
+                val messages = session.messages.toMutableList()
+                if (messages.isEmpty()) return
+                val last = messages.last()
+                val updated = last.copy(
+                    text = answer.toString(),
+                    reasoning = if (reasoning.isEmpty()) last.reasoning else reasoning.toString(),
+                    reasoningMs = reasoningMs ?: last.reasoningMs
+                )
+                messages[messages.lastIndex] = updated
+                session = session.copy(messages = messages, updatedAt = now)
+                _current.value = session
+            }
+
             try {
                 OpenRouterClient.streamChat(settings.value, base.messages).collect { event ->
-                    val messages = session.messages.toMutableList()
-                    val last = messages.last()
-                    val updated = when (event) {
+                    when (event) {
                         is StreamEvent.Reasoning -> {
                             if (reasoningStart == 0L) reasoningStart = System.currentTimeMillis()
-                            last.copy(reasoning = (last.reasoning ?: "") + event.text)
+                            reasoning.append(event.text)
                         }
                         is StreamEvent.Content -> {
-                            val elapsed = if (reasoningStart != 0L && last.reasoningMs == null) {
-                                System.currentTimeMillis() - reasoningStart
-                            } else last.reasoningMs
-                            last.copy(text = last.text + event.text, reasoningMs = elapsed)
+                            if (reasoningStart != 0L && reasoningMs == null) {
+                                reasoningMs = System.currentTimeMillis() - reasoningStart
+                            }
+                            answer.append(event.text)
                         }
                     }
-                    messages[messages.lastIndex] = updated
-                    session = session.copy(messages = messages)
-                    _current.value = session
+                    val now = System.currentTimeMillis()
+                    if (now - lastFlush >= 50L) flush()
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _error.value = e.message ?: "Something went wrong. Please try again."
             } finally {
+                if (reasoningStart != 0L && reasoningMs == null && reasoning.isNotEmpty()) {
+                    reasoningMs = System.currentTimeMillis() - reasoningStart
+                }
+                flush()
                 _streaming.value = false
                 val last = session.messages.lastOrNull()
                 if (last?.role == "assistant") {
-                    if (last.text.isBlank()) {
+                    if (last.text.isBlank() && last.reasoning.isNullOrBlank()) {
                         session = session.copy(messages = session.messages.dropLast(1))
                         _current.value = session
-                    } else if (reasoningStart != 0L && last.reasoningMs == null) {
+                    } else if (last.reasoningMs == null && !last.reasoning.isNullOrBlank()) {
                         val messages = session.messages.toMutableList()
-                        messages[messages.lastIndex] = last.copy(reasoningMs = System.currentTimeMillis() - reasoningStart)
+                        messages[messages.lastIndex] = last.copy(reasoningMs = reasoningMs)
                         session = session.copy(messages = messages)
                         _current.value = session
                     }

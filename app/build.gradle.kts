@@ -5,6 +5,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Injected by GitHub Actions (encrypted secret). Local builds without the
+// environment variable simply have no built-in free key.
+val builtInFreeKey: String = System.getenv("FREE_API_KEY") ?: ""
+
 android {
     namespace = "com.claudio.app"
     compileSdk = 35
@@ -13,9 +17,10 @@ android {
         applicationId = "com.claudio.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("String", "FREE_API_KEY", "\"$builtInFreeKey\"")
     }
 
     buildTypes {
@@ -33,6 +38,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"

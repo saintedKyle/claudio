@@ -2,33 +2,36 @@
 
 **Snap it. Ask it. Learn it.**
 
-Claudio is an Android study companion. Photograph any question — homework, a textbook page, handwritten notes, a diagram, a drawing, a character you don't recognize — ask anything about it, and Claudio reads the image and teaches you the answer, step by step.
+Claudio is a warm, photo-first study companion for Android. Photograph any question — homework, a textbook page, handwritten notes, a diagram, even a drawing — and Claudio reads it and teaches the answer step by step. You can also just type.
 
 ## Features
 
-- **Photo-first**: take a picture with your camera or pick one from your gallery. Claudio sends the actual image to a vision AI — it reads handwriting, equations, diagrams and drawings, not just OCR text.
-- **Ask anything**: quick prompts (Solve this, Explain step by step, Summarize, Translate, Make flashcards) or type your own question.
-- **Real tutoring**: streaming answers rendered as rich markdown — headings, numbered steps, bold results, code blocks — with follow-up questions in the same conversation.
-- **BYOK (Bring Your Own Key)**: paste an [OpenRouter](https://openrouter.ai/keys) API key, or point Claudio at any OpenAI-compatible endpoint (OpenAI, local gateways, etc.). Requests go straight from your phone to the provider.
-- **Free models, automatically**: Claudio queries your key's provider and lists every free model it finds, tagged with which ones can see photos. On first setup it auto-picks a free vision model so you never burn credits by accident.
-- **Live thinking trace**: reasoning models stream their thought process into a Claude-Code-style collapsible "Thinking" panel with a live timer, which folds into "Thought for Ns" once the answer begins.
-- **It can draw**: ask Claudio to draw an angle, a triangle, a graph or a labeled diagram of what your photo shows — it returns a real SVG that Claudio renders as a crisp drawing on a paper card, with fullscreen view and copy-SVG. Sketches render even when the model forgets the code fence, and a live "Sketching your figure…" card shows while the drawing streams in.
-- **Real math typesetting**: formulas arrive as readable math, never raw LaTeX — inline math is set in serif italic, key equations sit on their own amber formula plate, and fractions, roots, powers and Greek letters render as proper Unicode (θ′ = 60°, x², √3, 3⁄2).
-- **Model choice**: the live free-model list, curated vision picks as offline fallback (Gemini, GPT-4o, Claude, Qwen VL, Llama Vision), or paste any model id.
-- **Private history**: every conversation is saved on-device only. Reopen, continue, or delete them anytime.
-- **Delightful UI**: Jetpack Compose with an animated aurora background, a blinking owl mascot, a spinning-ring camera button, staggered entrances, springy buttons, a scanning effect while your photo loads, and live typing indicators.
+- **Works out of the box**: Claudio Free uses a built-in key, so there is no setup screen and no key to paste. Download the APK and start asking. BYOK (bring your own key) is optional and always takes priority when set.
+- **Photo-first**: take a picture with the camera or pick one from the gallery. The actual image goes to a vision AI, so it can read handwriting, equations and diagrams.
+- **Type anything**: the home composer starts a conversation with or without a photo.
+- **Real tutoring**: streaming answers rendered as rich markdown — headings, numbered steps, bold results, code blocks, math typography and follow-up questions in the same thread.
+- **Live thinking trace**: reasoning models stream their thought process into a collapsible "Thinking" panel with a live timer, which folds into "Thought for Ns" once the answer begins.
+- **It can draw**: ask for an angle, triangle, graph or labelled diagram and Claudio returns a real SVG rendered as a crisp paper card with fullscreen view and copy-SVG.
+- **Warm-black theme studio**: choose an accent (Ember, Amber, Sage, Ocean, Iris, Rose, Mono), a background family (Espresso, Graphite, Midnight, AMOLED), your message style, text size and reduced motion. Themes animate smoothly and persist.
+- **Smooth streaming**: answer deltas are batched and the message list is pinned intelligently, so text no longer flickers or fights the scroll position while it writes.
+- **Model choice**: the live free-model list from your key, curated free vision picks as an offline fallback, or paste any model id.
+- **Private history**: conversations are saved on-device only. Reopen, continue or delete them anytime.
 
 ## Privacy
 
-No accounts. No analytics. No servers in between. Your API key and conversations never leave your device except as direct requests to the AI provider you configure.
+No accounts. No analytics. No Claudio servers in between. Conversations stay on your device. In free mode, requests go directly to OpenRouter with the built-in key; in BYOK mode they go directly to the provider you configure.
 
 ## Install
 
-1. Go to [**Releases**](../../releases/latest) and download `claudio.apk` on your Android phone (Android 8.0+).
+1. Get the latest `claudio.apk` from [**Releases**](../../releases/latest).
 2. Open the file and allow installation from unknown sources when prompted.
-3. Launch Claudio, paste your OpenRouter key, pick a model, and snap your first question.
+3. Launch Claudio and ask your first question — no key required.
 
 Every push to `main` builds a fresh APK via GitHub Actions and publishes it as a release.
+
+## Use your own key
+
+Open **Settings → Connection → Use my own key**. Paste an [OpenRouter](https://openrouter.ai/keys) key (or point Claudio at any OpenAI-compatible endpoint) and save. Tap **Switch back to the built-in free key** at any time.
 
 ## Build from source
 
@@ -43,10 +46,10 @@ Or open the project in Android Studio and press Run.
 
 ## Tech stack
 
-- Kotlin 2.0 + Jetpack Compose (Material 3, custom dark theme)
+- Kotlin 2.0 + Jetpack Compose (Material 3, custom warm-black theme system with animated runtime palettes)
 - Camera via `ActivityResultContracts.TakePicture` + FileProvider; gallery via the Android Photo Picker
-- OkHttp with SSE streaming against the OpenRouter / OpenAI-compatible chat completions API (content + reasoning deltas)
-- kotlinx.serialization, DataStore (settings), JSON file storage (history)
+- OkHttp with SSE streaming against the OpenRouter / OpenAI-compatible chat completions API (content + reasoning deltas, batched for Compose)
+- kotlinx.serialization, DataStore (settings + theme), JSON file storage (history)
 - AndroidSVG for rendering model-generated diagrams inline
 - GitHub Actions CI → installable APK on every push
 

@@ -3,6 +3,7 @@ package com.claudio.app.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -11,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,8 +29,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,21 +44,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.claudio.app.data.ChatMessage
-import com.claudio.app.ui.theme.Cyan
-import com.claudio.app.ui.theme.Mint
-import com.claudio.app.ui.theme.Surface2
-import com.claudio.app.ui.theme.TextMuted
-import com.claudio.app.ui.theme.TextSecondary
-import com.claudio.app.ui.theme.Violet
+import com.claudio.app.ui.theme.LocalClaudioColors
+import com.claudio.app.ui.theme.LocalClaudioPrefs
 import kotlinx.coroutines.delay
 
 @Composable
 fun ThinkingPanel(message: ChatMessage, live: Boolean) {
+    val colors = LocalClaudioColors.current
+    val prefs = LocalClaudioPrefs.current
     var expanded by remember(message.id) { mutableStateOf(message.reasoningMs == null) }
     LaunchedEffect(message.reasoningMs) {
         if (message.reasoningMs != null) expanded = false
@@ -76,19 +74,30 @@ fun ThinkingPanel(message: ChatMessage, live: Boolean) {
 
     val transition = rememberInfiniteTransition(label = "think")
     val glow by transition.animateFloat(
-        0.45f, 1f,
-        infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "glow"
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+        label = "thinkGlow"
+    )
+    val iconAlpha = if (live && !prefs.reduceMotion) glow else 1f
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(220),
+        label = "thinkArrow"
     )
 
     val scroll = rememberScrollState()
-    LaunchedEffect(message.reasoning) { scroll.scrollTo(scroll.maxValue) }
+    LaunchedEffect(message.reasoning) {
+        if (scroll.maxValue > 0) scroll.scrollTo(scroll.maxValue)
+    }
 
+    val shape = RoundedCornerShape(16)
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Surface2)
+            .clip(shape)
+            .background(colors.surface1)
+            .border(1.dp, colors.outline, shape)
     ) {
         Row(
             Modifier
@@ -98,47 +107,43 @@ fun ThinkingPanel(message: ChatMessage, live: Boolean) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Filled.Psychology,
-                null,
-                tint = if (live) Violet else Mint,
-                modifier = Modifier
-                    .size(17.dp)
-                    .graphicsLayer { alpha = if (live) glow else 1f }
+                Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = (if (live) colors.accent else colors.success).copy(alpha = iconAlpha),
+                modifier = Modifier.size(15.dp)
             )
-            Spacer(Modifier.width(9.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
                 if (live) "Thinking" else "Thought for ${(message.reasoningMs ?: 0) / 1000}s",
                 style = MaterialTheme.typography.labelMedium,
-                color = if (live) Violet else Mint,
+                color = if (live) colors.accent else colors.success,
                 modifier = Modifier.weight(1f)
             )
             if (live) {
                 Text(
                     "${seconds}s",
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    color = TextMuted
+                    fontSize = 10.sp,
+                    color = colors.textMuted
                 )
                 Spacer(Modifier.width(8.dp))
             }
             Icon(
                 Icons.Filled.ExpandMore,
-                null,
-                tint = TextMuted,
-                modifier = Modifier
-                    .size(18.dp)
-                    .rotate(if (expanded) 180f else 0f)
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = colors.textMuted,
+                modifier = Modifier.size(17.dp).rotate(arrowRotation)
             )
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+            enter = fadeIn(tween(180)) + expandVertically(tween(240)),
+            exit = fadeOut(tween(140)) + shrinkVertically(tween(200))
         ) {
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 170.dp)
+                    .heightIn(max = 190.dp)
                     .verticalScroll(scroll)
                     .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
             ) {
@@ -147,15 +152,15 @@ fun ThinkingPanel(message: ChatMessage, live: Boolean) {
                         Modifier
                             .width(2.dp)
                             .fillMaxHeight()
-                            .background(Violet.copy(alpha = 0.5f))
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.accent.copy(alpha = 0.45f))
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         (message.reasoning ?: "") + if (live) " ▍" else "",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
-                        color = TextSecondary
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        color = colors.textSecondary
                     )
                 }
             }

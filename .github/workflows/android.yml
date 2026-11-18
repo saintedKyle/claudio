@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FREE_API_KEY: ${{ secrets.FREE_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,5 +50,5 @@ jobs:
 
             **Install:** download `claudio.apk` below on your Android phone, open it, and allow installation from your browser/files app when prompted. Requires Android 8.0+.
 
-            **Setup:** paste your OpenRouter API key (get one at https://openrouter.ai/keys) on first launch. Your key stays on your device.
+            **Setup:** none. Claudio Free works out of the box with the built-in key. Add your own key in Settings → Connection whenever you want, and switch back to free at any time.
           files: claudio.apk
