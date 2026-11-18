@@ -15,3 +15,8 @@ captures/
 build.log
 jobs.json
 repo.json
+*.log
+jobs*.json
+runs.json
+repo*.json
+ghuser.json
