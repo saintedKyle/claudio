@@ -52,6 +52,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.claudio.app.ClaudioViewModel
@@ -60,6 +62,7 @@ import com.claudio.app.data.Session
 import com.claudio.app.ui.components.AuroraBackground
 import com.claudio.app.ui.components.MarkdownText
 import com.claudio.app.ui.components.OwlLogo
+import com.claudio.app.ui.components.ThinkingPanel
 import com.claudio.app.ui.components.TopBar
 import com.claudio.app.ui.components.TypingDots
 import com.claudio.app.ui.theme.Amber
@@ -84,6 +87,7 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
     val error by vm.error.collectAsState()
     var input by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val haptics = LocalHapticFeedback.current
 
     val current = session
     if (current == null) {
@@ -139,11 +143,12 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
             ) {
                 items(current.messages, key = { it.id }) { message ->
                     if (message.role == "user") {
-                        UserBubble(message)
+                        UserBubble(message, Modifier.animateItem())
                     } else {
                         AssistantBubble(
                             message = message,
-                            isStreamingTail = streaming && message.id == current.messages.lastOrNull()?.id
+                            isStreamingTail = streaming && message.id == current.messages.lastOrNull()?.id,
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }
@@ -223,6 +228,7 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                             .clip(CircleShape)
                             .background(if (canSend) Brush.horizontalGradient(listOf(Violet, Magenta)) else Brush.horizontalGradient(listOf(Surface2, Surface2)))
                             .clickable(enabled = canSend) {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 vm.followUp(input)
                                 input = ""
                             },
@@ -237,8 +243,8 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun UserBubble(message: ChatMessage) {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+private fun UserBubble(message: ChatMessage, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
         if (message.imageBase64 != null) {
             val bitmap by produceState<ImageBitmap?>(null, message.imageBase64) {
                 value = withContext(Dispatchers.IO) { ImageUtils.fromBase64(message.imageBase64) }
@@ -270,10 +276,10 @@ private fun UserBubble(message: ChatMessage) {
 }
 
 @Composable
-private fun AssistantBubble(message: ChatMessage, isStreamingTail: Boolean) {
+private fun AssistantBubble(message: ChatMessage, isStreamingTail: Boolean, modifier: Modifier = Modifier) {
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         OwlLogo(size = 30.dp)
         Spacer(Modifier.width(10.dp))
         Column(
@@ -302,6 +308,10 @@ private fun AssistantBubble(message: ChatMessage, isStreamingTail: Boolean) {
                 }
             }
             Spacer(Modifier.height(8.dp))
+            if (message.reasoning != null) {
+                ThinkingPanel(message, live = isStreamingTail && message.reasoningMs == null)
+                Spacer(Modifier.height(10.dp))
+            }
             if (message.text.isBlank() && isStreamingTail) {
                 TypingDots(Modifier.padding(vertical = 6.dp))
             } else {

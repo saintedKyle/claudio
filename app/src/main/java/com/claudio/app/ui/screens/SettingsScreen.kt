@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.claudio.app.ClaudioViewModel
+import com.claudio.app.data.Settings
 import com.claudio.app.ui.components.AuroraBackground
 import com.claudio.app.ui.components.ClaudioFieldColors
 import com.claudio.app.ui.components.CustomModelField
@@ -69,6 +70,22 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
     var customModel by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
+
+    val freeModels by vm.freeModels.collectAsState()
+    val modelsLoading by vm.modelsLoading.collectAsState()
+    val modelsError by vm.modelsError.collectAsState()
+
+    LaunchedEffect(apiKey, baseUrl) {
+        if (apiKey.trim().length > 12) {
+            delay(700)
+            vm.fetchModels(apiKey.trim(), baseUrl.trim())
+        }
+    }
+    LaunchedEffect(freeModels) {
+        if (model == Settings.DEFAULT_MODEL && freeModels.isNotEmpty()) {
+            model = (freeModels.firstOrNull { it.vision } ?: freeModels.first()).id
+        }
+    }
 
     LaunchedEffect(saved) {
         if (saved) {
@@ -127,7 +144,14 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
-                    ModelPicker(selected = model, onSelect = { model = it })
+                    ModelPicker(
+                        selected = model,
+                        onSelect = { model = it },
+                        models = freeModels,
+                        loading = modelsLoading,
+                        error = modelsError,
+                        onRefresh = { vm.fetchModels(apiKey.trim(), baseUrl.trim()) }
+                    )
                     CustomModelField(value = customModel, onChange = { customModel = it })
                 }
 
@@ -154,7 +178,7 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                 ) {
                     Text("About Claudio", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                     Text(
-                        "Claudio v1.0.0 · a study companion that reads any photo of a question and teaches you the answer. " +
+                        "Claudio v1.1.0 · a study companion that reads any photo of a question and teaches you the answer. " +
                             "It is BYOK: you bring an OpenRouter (or any OpenAI-compatible) API key, and requests go straight from your phone to the provider. " +
                             "No accounts, no analytics, no servers in between. Conversations are stored only on this device.",
                         style = MaterialTheme.typography.bodySmall,

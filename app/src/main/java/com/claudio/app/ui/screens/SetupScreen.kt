@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudio.app.ClaudioViewModel
 import com.claudio.app.data.Settings
 import com.claudio.app.ui.components.AuroraBackground
 import com.claudio.app.ui.components.ClaudioFieldColors
@@ -67,15 +69,32 @@ import com.claudio.app.ui.theme.TextMuted
 import com.claudio.app.ui.theme.TextPrimary
 import com.claudio.app.ui.theme.TextSecondary
 import com.claudio.app.ui.theme.Violet
+import kotlinx.coroutines.delay
 
 @Composable
-fun SetupScreen(onStart: (key: String, baseUrl: String, model: String) -> Unit) {
+fun SetupScreen(vm: ClaudioViewModel, onStart: (key: String, baseUrl: String, model: String) -> Unit) {
     var apiKey by rememberSaveable { mutableStateOf("") }
     var baseUrl by rememberSaveable { mutableStateOf(Settings.DEFAULT_BASE_URL) }
     var model by rememberSaveable { mutableStateOf(Settings.DEFAULT_MODEL) }
     var customModel by rememberSaveable { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
+
+    val freeModels by vm.freeModels.collectAsState()
+    val modelsLoading by vm.modelsLoading.collectAsState()
+    val modelsError by vm.modelsError.collectAsState()
+
+    LaunchedEffect(apiKey, baseUrl) {
+        if (apiKey.trim().length > 12) {
+            delay(700)
+            vm.fetchModels(apiKey.trim(), baseUrl.trim())
+        }
+    }
+    LaunchedEffect(freeModels) {
+        if (model == Settings.DEFAULT_MODEL && freeModels.isNotEmpty()) {
+            model = (freeModels.firstOrNull { it.vision } ?: freeModels.first()).id
+        }
+    }
 
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
@@ -154,7 +173,14 @@ fun SetupScreen(onStart: (key: String, baseUrl: String, model: String) -> Unit) 
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-                ModelPicker(selected = model, onSelect = { model = it })
+                ModelPicker(
+                    selected = model,
+                    onSelect = { model = it },
+                    models = freeModels,
+                    loading = modelsLoading,
+                    error = modelsError,
+                    onRefresh = { vm.fetchModels(apiKey.trim(), baseUrl.trim()) }
+                )
                 CustomModelField(value = customModel, onChange = { customModel = it })
 
                 Text(

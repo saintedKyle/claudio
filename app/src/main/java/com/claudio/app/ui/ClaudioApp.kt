@@ -80,7 +80,7 @@ fun ClaudioApp(vm: ClaudioViewModel = viewModel()) {
             }
         }
         settings.apiKey.isBlank() -> {
-            SetupScreen(onStart = { key, base, model -> vm.saveSettings(key, base, model) })
+            SetupScreen(vm = vm, onStart = { key, base, model -> vm.saveSettings(key, base, model) })
         }
         else -> {
             AnimatedContent(

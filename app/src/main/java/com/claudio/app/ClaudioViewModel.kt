@@ -8,10 +8,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.claudio.app.data.ChatMessage
 import com.claudio.app.data.HistoryStore
+import com.claudio.app.data.ModelInfo
 import com.claudio.app.data.Session
 import com.claudio.app.data.Settings
 import com.claudio.app.data.SettingsStore
 import com.claudio.app.net.OpenRouterClient
+import com.claudio.app.net.StreamEvent
 import com.claudio.app.util.ImageUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +22,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,13 +55,55 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
 
     private var pendingBase64: String? = null
     private var streamJob: Job? = null
+    private var modelsJob: Job? = null
+
+    private val _freeModels = MutableStateFlow<List<ModelInfo>>(emptyList())
+    val freeModels: StateFlow<List<ModelInfo>> = _freeModels
+
+    private val _modelsLoading = MutableStateFlow(false)
+    val modelsLoading: StateFlow<Boolean> = _modelsLoading
+
+    private val _modelsError = MutableStateFlow<String?>(null)
+    val modelsError: StateFlow<String?> = _modelsError
 
     init {
         viewModelScope.launch { _sessions.value = historyStore.loadAll() }
+        viewModelScope.launch {
+            val s = settings.first { it.loaded }
+            if (s.apiKey.isNotBlank()) fetchModels(s.apiKey, s.baseUrl)
+        }
     }
 
     fun saveSettings(apiKey: String, baseUrl: String, model: String) {
-        viewModelScope.launch { settingsStore.save(apiKey, baseUrl, model) }
+        viewModelScope.launch {
+            settingsStore.save(apiKey, baseUrl, model)
+            fetchModels(apiKey, baseUrl)
+        }
+    }
+
+    fun fetchModels(apiKey: String, baseUrl: String) {
+        if (apiKey.isBlank()) return
+        modelsJob?.cancel()
+        modelsJob = viewModelScope.launch {
+            _modelsLoading.value = true
+            _modelsError.value = null
+            try {
+                val list = OpenRouterClient.fetchFreeModels(apiKey, baseUrl)
+                _freeModels.value = list
+                if (list.isEmpty()) {
+                    _modelsError.value = "This provider returned no free models. Curated picks are shown instead."
+                } else if (settings.value.model == Settings.DEFAULT_MODEL) {
+                    val pick = list.firstOrNull { it.vision } ?: list.first()
+                    settingsStore.save(settings.value.apiKey, settings.value.baseUrl, pick.id)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _modelsError.value = e.message ?: "Couldn't load the model list."
+            } finally {
+                _modelsLoading.value = false
+            }
+        }
     }
 
     fun loadImage(uri: Uri) {
@@ -150,11 +195,24 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
                 updatedAt = System.currentTimeMillis()
             )
             _current.value = session
+            var reasoningStart = 0L
             try {
-                OpenRouterClient.streamChat(settings.value, base.messages).collect { delta ->
+                OpenRouterClient.streamChat(settings.value, base.messages).collect { event ->
                     val messages = session.messages.toMutableList()
                     val last = messages.last()
-                    messages[messages.lastIndex] = last.copy(text = last.text + delta)
+                    val updated = when (event) {
+                        is StreamEvent.Reasoning -> {
+                            if (reasoningStart == 0L) reasoningStart = System.currentTimeMillis()
+                            last.copy(reasoning = (last.reasoning ?: "") + event.text)
+                        }
+                        is StreamEvent.Content -> {
+                            val elapsed = if (reasoningStart != 0L && last.reasoningMs == null) {
+                                System.currentTimeMillis() - reasoningStart
+                            } else last.reasoningMs
+                            last.copy(text = last.text + event.text, reasoningMs = elapsed)
+                        }
+                    }
+                    messages[messages.lastIndex] = updated
                     session = session.copy(messages = messages)
                     _current.value = session
                 }
@@ -165,9 +223,16 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
             } finally {
                 _streaming.value = false
                 val last = session.messages.lastOrNull()
-                if (last?.role == "assistant" && last.text.isBlank()) {
-                    session = session.copy(messages = session.messages.dropLast(1))
-                    _current.value = session
+                if (last?.role == "assistant") {
+                    if (last.text.isBlank()) {
+                        session = session.copy(messages = session.messages.dropLast(1))
+                        _current.value = session
+                    } else if (reasoningStart != 0L && last.reasoningMs == null) {
+                        val messages = session.messages.toMutableList()
+                        messages[messages.lastIndex] = last.copy(reasoningMs = System.currentTimeMillis() - reasoningStart)
+                        session = session.copy(messages = messages)
+                        _current.value = session
+                    }
                 }
                 withContext(NonCancellable) {
                     if (session.messages.isNotEmpty()) historyStore.save(session)

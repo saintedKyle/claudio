@@ -42,7 +42,7 @@ import com.claudio.app.ui.theme.Violet
 private sealed interface Block {
     data class Heading(val level: Int, val text: String) : Block
     data class Para(val text: String) : Block
-    data class Code(val text: String) : Block
+    data class Code(val text: String, val lang: String) : Block
     data class ListItem(val marker: String, val text: String) : Block
     data class Quote(val text: String) : Block
     data object Rule : Block
@@ -52,6 +52,7 @@ private fun parseBlocks(markdown: String): List<Block> {
     val blocks = mutableListOf<Block>()
     val paragraph = StringBuilder()
     var inCode = false
+    var codeLang = ""
     val code = StringBuilder()
 
     fun flushParagraph() {
@@ -63,10 +64,12 @@ private fun parseBlocks(markdown: String): List<Block> {
         val line = raw.trimEnd()
         if (line.trim().startsWith("```")) {
             if (inCode) {
-                blocks.add(Block.Code(code.toString().trimEnd()))
+                blocks.add(Block.Code(code.toString().trimEnd(), codeLang))
                 code.clear()
+                codeLang = ""
             } else {
                 flushParagraph()
+                codeLang = line.trim().removePrefix("```").trim().lowercase()
             }
             inCode = !inCode
             return@forEach
@@ -103,7 +106,7 @@ private fun parseBlocks(markdown: String): List<Block> {
             }
         }
     }
-    if (inCode && code.isNotBlank()) blocks.add(Block.Code(code.toString().trimEnd()))
+    if (inCode && code.isNotBlank()) blocks.add(Block.Code(code.toString().trimEnd(), codeLang))
     flushParagraph()
     return blocks
 }
@@ -178,21 +181,27 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.bodyLarge,
                         color = TextPrimary
                     )
-                    is Block.Code -> Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Surface2)
-                            .padding(14.dp)
-                    ) {
-                        Text(
-                            block.text,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
-                            lineHeight = 19.sp,
-                            color = Cyan,
-                            modifier = Modifier.horizontalScroll(rememberScrollState())
-                        )
+                    is Block.Code -> {
+                        if (block.lang == "svg" || block.text.trimStart().startsWith("<svg")) {
+                            DrawingCard(block.text)
+                        } else {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Surface2)
+                                    .padding(14.dp)
+                            ) {
+                                Text(
+                                    block.text,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    lineHeight = 19.sp,
+                                    color = Cyan,
+                                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                                )
+                            }
+                        }
                     }
                     is Block.ListItem -> Row {
                         Text(

@@ -9,7 +9,15 @@ data class ChatMessage(
     val role: String,
     val text: String,
     val imageBase64: String? = null,
+    val reasoning: String? = null,
+    val reasoningMs: Long? = null,
     val timestamp: Long = System.currentTimeMillis()
+)
+
+data class ModelInfo(
+    val id: String,
+    val name: String,
+    val vision: Boolean
 )
 
 @Serializable
