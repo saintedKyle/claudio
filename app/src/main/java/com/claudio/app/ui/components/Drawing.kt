@@ -69,7 +69,7 @@ private fun renderSvg(source: String): RenderedDrawing? = runCatching {
     val height = (1000f / aspect).roundToInt().coerceAtLeast(1)
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(bitmap)
-    canvas.drawPicture(picture, null, RectF(0f, 0f, width.toFloat(), height.toFloat()))
+    canvas.drawPicture(picture, RectF(0f, 0f, width.toFloat(), height.toFloat()))
     RenderedDrawing(bitmap.asImageBitmap(), aspect)
 }.getOrNull()
 
