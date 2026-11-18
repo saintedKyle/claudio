@@ -522,6 +522,7 @@ private fun HomeComposer(
             ) {
                 Row(
                     Modifier
+                        .weight(1f, fill = false)
                         .clip(RoundedCornerShape(50))
                         .background(colors.surface2)
                         .padding(horizontal = 9.dp, vertical = 4.dp),
