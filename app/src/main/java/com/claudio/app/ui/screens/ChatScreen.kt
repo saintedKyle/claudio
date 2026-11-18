@@ -173,22 +173,21 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
             ) {
                 items(messages, key = { it.id }, contentType = { it.role }) { message ->
                     val isTail = streaming && message.id == messages.lastOrNull()?.id
-                    val entrance = if (isTail) {
-                        Modifier
-                    } else {
-                        Modifier.animateItem(
-                            fadeInSpec = tween(260),
-                            placementSpec = null,
-                            fadeOutSpec = tween(160)
-                        )
-                    }
                     if (message.role == "user") {
-                        UserMessage(message = message, modifier = entrance)
+                        UserMessage(
+                            message = message,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = tween(220),
+                                placementSpec = null,
+                                fadeOutSpec = tween(140)
+                            )
+                        )
                     } else {
+                        // Assistant text is deliberately not item-animated: animating
+                        // a growing streaming item makes it pulse/flicker per token.
                         AssistantMessage(
                             message = message,
-                            isStreamingTail = isTail,
-                            modifier = entrance
+                            isStreamingTail = isTail
                         )
                     }
                 }
