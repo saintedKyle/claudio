@@ -299,14 +299,6 @@ private fun AssistantMessage(
             copied = false
         }
     }
-    val caret = rememberInfiniteTransition(label = "caret")
-    val caretAlpha by caret.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(tween(720), RepeatMode.Reverse),
-        label = "caretAlpha"
-    )
-
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ClaudioMark(size = 20.dp, animated = false)
@@ -314,12 +306,7 @@ private fun AssistantMessage(
             Text("Claudio", style = MaterialTheme.typography.labelMedium, color = colors.accent)
             if (isStreamingTail) {
                 Spacer(Modifier.width(7.dp))
-                Box(
-                    Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(colors.accent.copy(alpha = caretAlpha))
-                )
+                StreamingDot()
             }
             Spacer(Modifier.weight(1f))
             if (message.text.isNotBlank()) {
@@ -364,6 +351,24 @@ private fun AssistantMessage(
             MarkdownText(message.text, live = isStreamingTail)
         }
     }
+}
+
+@Composable
+private fun StreamingDot() {
+    val colors = LocalClaudioColors.current
+    val transition = rememberInfiniteTransition(label = "streamDot")
+    val alpha by transition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(tween(720), RepeatMode.Reverse),
+        label = "streamDotAlpha"
+    )
+    Box(
+        Modifier
+            .size(5.dp)
+            .clip(CircleShape)
+            .background(colors.accent.copy(alpha = alpha))
+    )
 }
 
 @Composable

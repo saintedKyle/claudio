@@ -111,19 +111,23 @@ fun AuroraBackground(modifier: Modifier = Modifier, content: @Composable () -> U
 fun ClaudioMark(size: Dp = 72.dp, modifier: Modifier = Modifier, animated: Boolean = true) {
     val colors = LocalClaudioColors.current
     val reduceMotion = LocalClaudioPrefs.current.reduceMotion || !animated
-    val transition = rememberInfiniteTransition(label = "mark")
-    val spin by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(90000, easing = LinearEasing)),
-        label = "markSpin"
-    )
-    val breath by transition.animateFloat(
-        initialValue = 0.975f,
-        targetValue = 1.025f,
-        animationSpec = infiniteRepeatable(tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "markBreath"
-    )
+    var spin = 0f
+    var breath = 1f
+    if (!reduceMotion) {
+        val transition = rememberInfiniteTransition(label = "mark")
+        spin = transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(90000, easing = LinearEasing)),
+            label = "markSpin"
+        ).value
+        breath = transition.animateFloat(
+            initialValue = 0.975f,
+            targetValue = 1.025f,
+            animationSpec = infiniteRepeatable(tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "markBreath"
+        ).value
+    }
     val scale = if (reduceMotion) 1f else breath
 
     Canvas(

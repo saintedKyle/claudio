@@ -73,14 +73,16 @@ fun ThinkingPanel(message: ChatMessage, live: Boolean) {
         }
     }
 
-    val transition = rememberInfiniteTransition(label = "think")
-    val glow by transition.animateFloat(
-        initialValue = 0.45f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
-        label = "thinkGlow"
-    )
-    val iconAlpha = if (live && !prefs.reduceMotion) glow else 1f
+    var iconAlpha = 1f
+    if (live && !prefs.reduceMotion) {
+        val transition = rememberInfiniteTransition(label = "think")
+        iconAlpha = transition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+            label = "thinkGlow"
+        ).value
+    }
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(220),
