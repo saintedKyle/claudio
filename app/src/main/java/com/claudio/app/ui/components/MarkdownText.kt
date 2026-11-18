@@ -43,6 +43,8 @@ import com.claudio.app.ui.theme.TextPrimary
 import com.claudio.app.ui.theme.TextSecondary
 
 private val MathInk = Color(0xFFFFE0B0)
+private val InlineCodeInk = Color(0xFFB9C9D2)
+private val InlineCodePlate = Color(0x1AFFFFFF)
 
 private sealed interface Block {
     data class Heading(val level: Int, val text: String) : Block
@@ -161,7 +163,7 @@ private fun inlineMarkdown(text: String): AnnotatedString = buildAnnotatedString
             text.startsWith("**", i) -> {
                 val end = text.indexOf("**", i + 2)
                 if (end > i + 2) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = TextPrimary)) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                         append(inlineMarkdown(text.substring(i + 2, end)))
                     }
                     i = end + 2
@@ -170,7 +172,7 @@ private fun inlineMarkdown(text: String): AnnotatedString = buildAnnotatedString
             text[i] == '`' -> {
                 val end = text.indexOf('`', i + 1)
                 if (end > i + 1) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = Cyan, background = Surface3)) {
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = InlineCodeInk, background = InlineCodePlate)) {
                         append(" ${text.substring(i + 1, end)} ")
                     }
                     i = end + 1

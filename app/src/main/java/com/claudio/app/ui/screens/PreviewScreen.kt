@@ -120,12 +120,13 @@ fun PreviewScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)
                             )
                         } else if (loading) {
+                            val scanTint = Cyan
                             CircularProgressIndicator(color = Magenta, strokeWidth = 3.dp)
                             Canvas(Modifier.fillMaxSize()) {
                                 val y = size.height * scan
                                 drawRect(
                                     brush = Brush.verticalGradient(
-                                        listOf(Color.Transparent, Cyan.copy(alpha = 0.35f), Color.Transparent),
+                                        listOf(Color.Transparent, scanTint.copy(alpha = 0.35f), Color.Transparent),
                                         startY = y - 30f, endY = y + 30f
                                     ),
                                     topLeft = Offset(0f, y - 30f),
