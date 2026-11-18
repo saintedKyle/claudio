@@ -3,6 +3,7 @@ package com.claudio.app.net
 import com.claudio.app.data.ChatMessage
 import com.claudio.app.data.Settings
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow

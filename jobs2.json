@@ -1,0 +1,121 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 134566439509,
+      "run_id": 44234250817,
+      "workflow_name": "Build Claudio APK",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/saintedKyle/claudio/actions/runs/44234250817",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVyi8WM8AAAAfVMjqVQ",
+      "head_sha": "129b4fc78af9c889efa47d2ea11ffa4c03138ac1",
+      "url": "https://api.github.com/repos/saintedKyle/claudio/actions/jobs/134566439509",
+      "html_url": "https://github.com/saintedKyle/claudio/actions/runs/44234250817/job/134566439509",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-18T04:00:05Z",
+      "started_at": "2026-11-18T04:00:07Z",
+      "completed_at": "2026-11-18T04:02:04Z",
+      "name": "build",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-18T04:00:07Z",
+          "completed_at": "2026-11-18T04:00:09Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-18T04:00:09Z",
+          "completed_at": "2026-11-18T04:00:10Z"
+        },
+        {
+          "name": "Set up JDK 17",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-18T04:00:10Z",
+          "completed_at": "2026-11-18T04:00:10Z"
+        },
+        {
+          "name": "Set up Gradle",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-18T04:00:10Z",
+          "completed_at": "2026-11-18T04:00:14Z"
+        },
+        {
+          "name": "Build debug APK",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-11-18T04:00:14Z",
+          "completed_at": "2026-11-18T04:01:56Z"
+        },
+        {
+          "name": "Upload APK artifact",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-18T04:01:56Z",
+          "completed_at": "2026-11-18T04:01:56Z"
+        },
+        {
+          "name": "Publish release with APK",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-11-18T04:01:56Z",
+          "completed_at": "2026-11-18T04:01:56Z"
+        },
+        {
+          "name": "Post Set up Gradle",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-18T04:01:56Z",
+          "completed_at": "2026-11-18T04:02:02Z"
+        },
+        {
+          "name": "Post Set up JDK 17",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-18T04:02:02Z",
+          "completed_at": "2026-11-18T04:02:03Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-18T04:02:03Z",
+          "completed_at": "2026-11-18T04:02:03Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-18T04:02:03Z",
+          "completed_at": "2026-11-18T04:02:03Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/saintedKyle/claudio/check-runs/134566439509",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000184,
+      "runner_name": "GitHub Actions 1000000184",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}
