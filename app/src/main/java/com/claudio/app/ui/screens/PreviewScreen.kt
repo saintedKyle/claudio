@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,13 +54,10 @@ import com.claudio.app.ui.components.GradientButton
 import com.claudio.app.ui.components.PillChip
 import com.claudio.app.ui.components.StaggeredIn
 import com.claudio.app.ui.components.TopBar
-import com.claudio.app.ui.theme.Cyan
-import com.claudio.app.ui.theme.Magenta
-import com.claudio.app.ui.theme.Surface1
+import com.claudio.app.ui.theme.LocalClaudioColors
 import com.claudio.app.ui.theme.TextMuted
 import com.claudio.app.ui.theme.TextPrimary
 import com.claudio.app.ui.theme.TextSecondary
-import com.claudio.app.ui.theme.Violet
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 
@@ -82,6 +80,7 @@ fun PreviewScreen(
 ) {
     val image by vm.pendingImage.collectAsState()
     val loading by vm.loadingImage.collectAsState()
+    val colors = LocalClaudioColors.current
     var question by rememberSaveable { mutableStateOf("") }
 
     val transition = rememberInfiniteTransition(label = "scan")
@@ -109,7 +108,8 @@ fun PreviewScreen(
                             .fillMaxWidth()
                             .heightIn(min = 200.dp, max = 360.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Surface1),
+                            .background(colors.surface1)
+                            .border(1.dp, colors.outline, RoundedCornerShape(24.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (image != null) {
@@ -120,8 +120,8 @@ fun PreviewScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)
                             )
                         } else if (loading) {
-                            val scanTint = Cyan
-                            CircularProgressIndicator(color = Magenta, strokeWidth = 3.dp)
+                            val scanTint = colors.accent
+                            CircularProgressIndicator(color = colors.accent, strokeWidth = 3.dp)
                             Canvas(Modifier.fillMaxSize()) {
                                 val y = size.height * scan
                                 drawRect(
@@ -146,7 +146,7 @@ fun PreviewScreen(
                     Text(
                         "Retake photo",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Cyan,
+                        color = colors.accent,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
                             .clickable(onClick = onRetake)
