@@ -232,11 +232,19 @@ fun HomeScreen(
             }
 
             StaggeredIn(6) {
-                Text(
-                    "BYOK · your key stays on this device",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "BYOK · your key stays on this device",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "made by poging kyle",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Violet
+                    )
+                }
             }
             Spacer(Modifier.height(24.dp))
         }

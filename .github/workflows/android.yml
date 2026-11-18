@@ -29,11 +29,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk claudio.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: claudio-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: claudio.apk
 
       - name: Publish release with APK
         uses: softprops/action-gh-release@v2
@@ -41,9 +44,9 @@ jobs:
           tag_name: v1.0.${{ github.run_number }}
           name: Claudio v1.0.${{ github.run_number }}
           body: |
-            Installable Android build of Claudio.
+            Installable Android build of Claudio — made by poging kyle.
 
-            **Install:** download `app-debug.apk` below on your Android phone, open it, and allow installation from your browser/files app when prompted. Requires Android 8.0+.
+            **Install:** download `claudio.apk` below on your Android phone, open it, and allow installation from your browser/files app when prompted. Requires Android 8.0+.
 
             **Setup:** paste your OpenRouter API key (get one at https://openrouter.ai/keys) on first launch. Your key stays on your device.
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: claudio.apk

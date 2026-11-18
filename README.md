@@ -20,7 +20,7 @@ No accounts. No analytics. No servers in between. Your API key and conversations
 
 ## Install
 
-1. Go to [**Releases**](../../releases/latest) and download `app-debug.apk` on your Android phone (Android 8.0+).
+1. Go to [**Releases**](../../releases/latest) and download `claudio.apk` on your Android phone (Android 8.0+).
 2. Open the file and allow installation from unknown sources when prompted.
 3. Launch Claudio, paste your OpenRouter key, pick a model, and snap your first question.
 
@@ -44,6 +44,10 @@ Or open the project in Android Studio and press Run.
 - OkHttp with SSE streaming against the OpenRouter / OpenAI-compatible chat completions API
 - kotlinx.serialization, DataStore (settings), JSON file storage (history)
 - GitHub Actions CI → installable APK on every push
+
+## Credits
+
+**Made by poging kyle.**
 
 ## License
 

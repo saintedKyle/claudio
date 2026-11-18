@@ -165,6 +165,12 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         color = TextMuted
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Made by poging kyle",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Amber
+                    )
                 }
                 Spacer(Modifier.height(24.dp))
             }

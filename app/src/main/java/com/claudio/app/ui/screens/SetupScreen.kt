@@ -197,6 +197,12 @@ fun SetupScreen(onStart: (key: String, baseUrl: String, model: String) -> Unit) 
                 style = MaterialTheme.typography.labelSmall,
                 color = TextMuted
             )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "made by poging kyle",
+                style = MaterialTheme.typography.labelSmall,
+                color = Violet
+            )
             Spacer(Modifier.height(32.dp))
         }
     }
