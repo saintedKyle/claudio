@@ -250,13 +250,24 @@ fun HomeScreen(
                 model = settings.model,
                 usingFree = settings.usingFreeKey
             )
-            Text(
-                "Claudio can make mistakes — double-check important answers.",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.textMuted,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-            )
+            Column(
+                Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Claudio can make mistakes — double-check important answers.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textMuted,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    "Made by kyle",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }

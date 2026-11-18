@@ -1,5 +1,9 @@
 package com.claudio.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -43,13 +47,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -68,11 +79,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.claudio.app.ClaudioViewModel
 import com.claudio.app.data.BubbleStyle
 import com.claudio.app.data.ChatMessage
@@ -89,6 +102,7 @@ import com.claudio.app.util.ImageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.math.max
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -97,10 +111,34 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
     val session by vm.current.collectAsState()
     val streaming by vm.streaming.collectAsState()
     val error by vm.error.collectAsState()
+    val pendingImage by vm.pendingImage.collectAsState()
+    val attaching by vm.loadingImage.collectAsState()
     var input by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
     val colors = LocalClaudioColors.current
+    val context = LocalContext.current
+    var captureUri by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) vm.loadImage(uri)
+    }
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val uri = captureUri
+        if (ok && uri != null) vm.loadImage(Uri.parse(uri))
+    }
+    val launchCamera: () -> Unit = {
+        val dir = File(context.cacheDir, "captures").apply { mkdirs() }
+        val file = File(dir, "chat_${System.currentTimeMillis()}.jpg")
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+        captureUri = uri.toString()
+        takePicture.launch(uri)
+    }
+
+    // Don't carry an unsent attachment back to the home composer.
+    DisposableEffect(Unit) {
+        onDispose { vm.clearPending() }
+    }
 
     val current = session
     if (current == null) {
@@ -209,10 +247,19 @@ fun ChatScreen(vm: ClaudioViewModel, onBack: () -> Unit, onNew: () -> Unit) {
                 onValueChange = { input = it },
                 streaming = streaming,
                 model = current.model,
+                pendingImage = pendingImage,
+                attaching = attaching,
+                onTakePhoto = launchCamera,
+                onPickImage = {
+                    pickMedia.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onRemoveImage = vm::clearPending,
                 onStop = vm::stopStreaming,
                 onSend = {
                     val text = input.trim()
-                    if (text.isNotEmpty() && !streaming) {
+                    if ((text.isNotEmpty() || pendingImage != null) && !streaming && !attaching) {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         vm.followUp(text)
                         input = ""
@@ -424,78 +471,206 @@ private fun ChatComposer(
     onValueChange: (String) -> Unit,
     streaming: Boolean,
     model: String,
+    pendingImage: ImageBitmap?,
+    attaching: Boolean,
+    onTakePhoto: () -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
     onStop: () -> Unit,
     onSend: () -> Unit
 ) {
     val colors = LocalClaudioColors.current
     val shape = RoundedCornerShape(26)
     val modelLabel = model.substringAfterLast('/')
+    var showAttachMenu by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Row(
+        Column(
             Modifier
                 .fillMaxWidth()
                 .clip(shape)
                 .background(colors.surface1)
                 .border(1.dp, colors.outline, shape)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.Bottom
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.textPrimary),
-                cursorBrush = SolidColor(colors.accent),
-                maxLines = 5,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSend() }),
-                decorationBox = { inner ->
-                    Box(Modifier.padding(horizontal = 9.dp, vertical = 10.dp)) {
-                        if (value.isBlank()) {
+            if (pendingImage != null || attaching) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (pendingImage != null) {
+                        Image(
+                            bitmap = pendingImage,
+                            contentDescription = "Attached photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, colors.outline, RoundedCornerShape(12.dp))
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
                             Text(
-                                "Reply to Claudio…",
-                                style = MaterialTheme.typography.bodyLarge,
+                                "Photo attached",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                "Claudio will look at it with your next message.",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = colors.textMuted
                             )
                         }
-                        inner()
+                    } else {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = colors.accent,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Attaching photo…",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                },
-                modifier = Modifier.weight(1f)
-            )
-            if (streaming) {
-                Box(
-                    Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(colors.surface2)
-                        .border(1.dp, colors.outline, CircleShape)
-                        .clickable(onClick = onStop),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Filled.Stop,
-                        contentDescription = "Stop",
-                        tint = colors.danger,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Box(
+                        Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(colors.surface2)
+                            .clickable(onClick = onRemoveImage),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Remove photo",
+                            tint = colors.textMuted,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
                 }
-            } else {
-                val canSend = value.isNotBlank()
-                Box(
-                    Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(if (canSend) colors.accent else colors.surface2)
-                        .clickable(enabled = canSend, onClick = onSend),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (canSend) colors.backgroundDeep else colors.textMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
+            }
+
+            Row(verticalAlignment = Alignment.Bottom) {
+                Box {
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(colors.surface2)
+                            .border(1.dp, colors.outline, CircleShape)
+                            .clickable { showAttachMenu = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = "Add a photo",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showAttachMenu,
+                        onDismissRequest = { showAttachMenu = false },
+                        containerColor = colors.surface2,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.outline)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Take a photo", color = colors.textPrimary) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.PhotoCamera, contentDescription = null, tint = colors.accent)
+                            },
+                            onClick = {
+                                showAttachMenu = false
+                                onTakePhoto()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Choose from library", color = colors.textPrimary) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.PhotoLibrary, contentDescription = null, tint = colors.accent)
+                            },
+                            onClick = {
+                                showAttachMenu = false
+                                onPickImage()
+                            }
+                        )
+                    }
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.textPrimary),
+                    cursorBrush = SolidColor(colors.accent),
+                    maxLines = 5,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { onSend() }),
+                    decorationBox = { inner ->
+                        Box(Modifier.padding(horizontal = 9.dp, vertical = 10.dp)) {
+                            if (value.isBlank()) {
+                                Text(
+                                    if (pendingImage != null) "Add a note (optional)…" else "Reply to Claudio…",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = colors.textMuted
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                if (streaming) {
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(colors.surface2)
+                            .border(1.dp, colors.outline, CircleShape)
+                            .clickable(onClick = onStop),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.Stop,
+                            contentDescription = "Stop",
+                            tint = colors.danger,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                } else if (attaching) {
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(colors.surface2),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = colors.accent,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                } else {
+                    val canSend = value.isNotBlank() || pendingImage != null
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(if (canSend) colors.accent else colors.surface2)
+                            .clickable(enabled = canSend, onClick = onSend),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (canSend) colors.backgroundDeep else colors.textMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -513,6 +688,8 @@ private fun ChatComposer(
             )
             if (streaming) {
                 Text("Writing…", style = MaterialTheme.typography.labelSmall, color = colors.accent)
+            } else if (pendingImage != null) {
+                Text("Photo ready", style = MaterialTheme.typography.labelSmall, color = colors.accent)
             }
         }
     }

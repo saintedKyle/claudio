@@ -43,10 +43,10 @@ jobs:
       - name: Publish release with APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.3.${{ github.run_number }}
-          name: Claudio v1.3.${{ github.run_number }}
+          tag_name: v1.4.${{ github.run_number }}
+          name: Claudio v1.4.${{ github.run_number }}
           body: |
-            Installable Android build of Claudio — made by poging kyle.
+            Installable Android build of Claudio — made by kyle.
 
             **Install:** download `claudio.apk` below on your Android phone, open it, and allow installation from your browser/files app when prompted. Requires Android 8.0+.
 

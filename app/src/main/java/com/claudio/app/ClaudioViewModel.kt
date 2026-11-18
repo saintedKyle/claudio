@@ -56,6 +56,8 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
     val loadingImage: StateFlow<Boolean> = _loadingImage
 
     private var pendingBase64: String? = null
+    private var imageJob: Job? = null
+    private var imageRequest = 0
     private var streamJob: Job? = null
     private var modelsJob: Job? = null
 
@@ -151,28 +153,41 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun loadImage(uri: Uri) {
-        viewModelScope.launch {
+        imageJob?.cancel()
+        val request = ++imageRequest
+        _pendingImage.value = null
+        pendingBase64 = null
+        imageJob = viewModelScope.launch {
             _loadingImage.value = true
-            _pendingImage.value = null
-            pendingBase64 = null
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val bitmap = ImageUtils.loadScaled(getApplication(), uri)
-                    bitmap?.let { it.asImageBitmap() to ImageUtils.toBase64(it) }
-                }.getOrNull()
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val bitmap = ImageUtils.loadScaled(getApplication(), uri)
+                        bitmap?.let { it.asImageBitmap() to ImageUtils.toBase64(it) }
+                    }.getOrNull()
+                }
+                if (request != imageRequest) return@launch
+                if (result != null) {
+                    _pendingImage.value = result.first
+                    pendingBase64 = result.second
+                } else {
+                    _error.value = "Couldn't read that image. Try taking the photo again."
+                }
+            } finally {
+                if (request == imageRequest) {
+                    _loadingImage.value = false
+                    imageJob = null
+                }
             }
-            if (result != null) {
-                _pendingImage.value = result.first
-                pendingBase64 = result.second
-            } else {
-                _error.value = "Couldn't read that image. Try taking the photo again."
-            }
-            _loadingImage.value = false
         }
     }
 
     fun clearPending() {
+        imageRequest++
+        imageJob?.cancel()
+        imageJob = null
         _pendingImage.value = null
+        _loadingImage.value = false
         pendingBase64 = null
     }
 
@@ -194,11 +209,13 @@ class ClaudioViewModel(app: Application) : AndroidViewModel(app) {
     fun followUp(text: String) {
         val session = _current.value ?: return
         val trimmed = text.trim()
-        if (trimmed.isEmpty() || _streaming.value) return
+        val image = pendingBase64
+        if ((trimmed.isEmpty() && image == null) || _streaming.value) return
         _current.value = session.copy(
-            messages = session.messages + ChatMessage(role = "user", text = trimmed),
+            messages = session.messages + ChatMessage(role = "user", text = trimmed, imageBase64 = image),
             updatedAt = System.currentTimeMillis()
         )
+        clearPending()
         runCompletion()
     }
 

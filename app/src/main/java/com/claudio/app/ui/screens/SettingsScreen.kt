@@ -425,7 +425,7 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
 
                 SectionCard(title = "About", icon = Icons.Filled.AutoAwesome) {
                     Text(
-                        "Claudio v1.3.0 · a warm study companion that reads photos, drawings and notes, then teaches the answer.",
+                        "Claudio v1.4.0 · a warm study companion that reads photos, drawings and notes, then teaches the answer.",
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary
                     )
@@ -435,7 +435,7 @@ fun SettingsScreen(vm: ClaudioViewModel, onBack: () -> Unit) {
                         color = colors.textMuted
                     )
                     Text(
-                        "Made by poging kyle",
+                        "Made by kyle",
                         style = MaterialTheme.typography.labelLarge,
                         color = colors.accent
                     )

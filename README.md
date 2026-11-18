@@ -9,6 +9,7 @@ Claudio is a warm, photo-first study companion for Android. Photograph any quest
 - **Works out of the box**: Claudio Free uses a built-in key, so there is no setup screen and no key to paste. Download the APK and start asking. BYOK (bring your own key) is optional and always takes priority when set.
 - **Photo-first**: take a picture with the camera or pick one from the gallery. The actual image goes to a vision AI, so it can read handwriting, equations and diagrams.
 - **Type anything**: the home composer starts a conversation with or without a photo.
+- **Add photos anytime**: attach a new photo to an ongoing conversation from the chat composer, with captions if you like.
 - **Real tutoring**: streaming answers rendered as rich markdown — headings, numbered steps, bold results, code blocks, math typography and follow-up questions in the same thread.
 - **Live thinking trace**: reasoning models stream their thought process into a collapsible "Thinking" panel with a live timer, which folds into "Thought for Ns" once the answer begins.
 - **It can draw**: ask for an angle, triangle, graph or labelled diagram and Claudio returns a real SVG rendered as a crisp paper card with fullscreen view and copy-SVG.
@@ -55,7 +56,7 @@ Or open the project in Android Studio and press Run.
 
 ## Credits
 
-**Made by poging kyle.**
+**Made by kyle.**
 
 ## License
 

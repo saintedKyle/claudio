@@ -17,8 +17,8 @@ android {
         applicationId = "com.claudio.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 5
+        versionName = "1.4.0"
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "FREE_API_KEY", "\"$builtInFreeKey\"")
     }
